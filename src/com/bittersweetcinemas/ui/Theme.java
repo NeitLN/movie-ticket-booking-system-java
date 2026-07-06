@@ -25,6 +25,6 @@ public final class Theme {
     public static final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 13);
     public static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 11);
     public static final Font FONT_TITLE = new Font("Georgia", Font.BOLD, 42);
-    public static final Font FONT_HEADING = new Font("Georgia", Font.BOLD, 18);
+    public static final Font FONT_HEADING = new Font("Segoe UI", Font.BOLD, 18); // Changed from Georgia to Segoe UI to fully support accented "Ế"
     public static final Font FONT_LOGO = new Font("Georgia", Font.BOLD, 16);
 }
