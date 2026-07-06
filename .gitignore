@@ -1,0 +1,7 @@
+out/
+*.class
+sources.txt
+temp-repo/
+.DS_Store
+*.log
+Screenshot 2026-07-06 231648.png
