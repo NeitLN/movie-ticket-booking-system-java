@@ -34,13 +34,17 @@ public class HomeFrame extends JFrame {
         topBar.setPreferredSize(new Dimension(10, 30));
         topBar.setBorder(new EmptyBorder(0, 22, 0, 22));
 
-        JLabel left = new JLabel("◆ Tin mới & Ưu đãi      ◆ Vé của tôi      ◆ Hệ thống rạp");
-        left.setForeground(Theme.MUTED);
-        left.setFont(Theme.FONT_NORMAL);
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
+        leftPanel.setOpaque(false);
+        leftPanel.add(createTopBarItem("Tin mới & Ưu đãi", Theme.MUTED));
+        leftPanel.add(createTopBarItem("Vé của tôi", Theme.MUTED));
+        leftPanel.add(createTopBarItem("Hệ thống rạp", Theme.MUTED));
+
         JLabel right = new JLabel("Đăng nhập / Đăng ký");
         right.setForeground(Theme.CREAM);
         right.setFont(Theme.FONT_BOLD);
-        topBar.add(left, BorderLayout.WEST);
+        
+        topBar.add(leftPanel, BorderLayout.WEST);
         topBar.add(right, BorderLayout.EAST);
 
         JPanel nav = new JPanel(new BorderLayout());
@@ -76,18 +80,35 @@ public class HomeFrame extends JFrame {
         return wrapper;
     }
 
+    private JLabel createTopBarItem(String text, Color color) {
+        JLabel label = new JLabel(text);
+        label.setIcon(new DiamondIcon(color));
+        label.setForeground(color);
+        label.setFont(Theme.FONT_NORMAL);
+        return label;
+    }
+
     private JComponent buildLogo() {
         JPanel logo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         logo.setOpaque(false);
         logo.setPreferredSize(new Dimension(190, 54));
 
-        RoundedPanel mark = new RoundedPanel(8, Theme.RED);
-        mark.setPreferredSize(new Dimension(30, 30));
-        mark.setLayout(new GridBagLayout());
-        JLabel m = new JLabel("▦");
-        m.setForeground(Color.WHITE);
-        m.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        mark.add(m);
+        ImageIcon logoIcon = loadAndProcessLogo();
+        JComponent mark;
+        if (logoIcon != null) {
+            JLabel imgLabel = new JLabel(logoIcon);
+            imgLabel.setPreferredSize(new Dimension(34, 34));
+            mark = imgLabel;
+        } else {
+            RoundedPanel fallback = new RoundedPanel(8, Theme.RED);
+            fallback.setPreferredSize(new Dimension(30, 30));
+            fallback.setLayout(new GridBagLayout());
+            JLabel m = new JLabel("▦");
+            m.setForeground(Color.WHITE);
+            m.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            fallback.add(m);
+            mark = fallback;
+        }
 
         JLabel text = new JLabel("<html><div style='line-height:10px'>BITTERSWEET<br><span style='color:#E9B838'>CINEMAS</span></div></html>");
         text.setForeground(Theme.CREAM);
@@ -95,6 +116,44 @@ public class HomeFrame extends JFrame {
         logo.add(mark);
         logo.add(text);
         return logo;
+    }
+
+    private ImageIcon loadAndProcessLogo() {
+        try {
+            java.io.File file = new java.io.File("images (1).jpg");
+            if (!file.exists()) {
+                return null;
+            }
+            java.awt.image.BufferedImage source = javax.imageio.ImageIO.read(file);
+            int w = source.getWidth();
+            int h = source.getHeight();
+            
+            // Create a transparent image of same size
+            java.awt.image.BufferedImage target = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
+                    int rgb = source.getRGB(x, y);
+                    int r = (rgb >> 16) & 0xFF;
+                    int g = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    
+                    // If the pixel is white or very close to white, make it transparent
+                    if (r > 240 && g > 240 && b > 240) {
+                        target.setRGB(x, y, 0x00FFFFFF & rgb); // set alpha to 0
+                    } else {
+                        target.setRGB(x, y, rgb);
+                    }
+                }
+            }
+            
+            // Scale the processed image to 34x34 for the logo mark
+            Image scaled = target.getScaledInstance(34, 34, Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private JLabel navItem(String text) {
@@ -132,12 +191,28 @@ public class HomeFrame extends JFrame {
         hero.setBorder(new EmptyBorder(28, 36, 18, 36));
 
         RoundedPanel banner = new RoundedPanel(22, Theme.BG_2, null) {
+            private ImageIcon bgIcon = new java.io.File("banner_bg.gif").exists() ? new ImageIcon("banner_bg.gif") : null;
+
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, new Color(45, 17, 22), getWidth(), getHeight(), new Color(16, 18, 23));
-                g2.setPaint(gp);
-                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 22, 22);
+                
+                // 1. Draw animated video-loop background if exists
+                if (bgIcon != null) {
+                    g2.drawImage(bgIcon.getImage(), 0, 0, getWidth(), getHeight(), this);
+                    // Overlay a semi-transparent cinema dark red-to-black gradient to preserve high text contrast
+                    GradientPaint gp = new GradientPaint(
+                        0, 0, new Color(45, 17, 22, 180), // 70% opacity dark red
+                        getWidth(), getHeight(), new Color(16, 18, 23, 220) // 85% opacity dark black
+                    );
+                    g2.setPaint(gp);
+                    g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 22, 22);
+                } else {
+                    // Fallback to beautiful default gradient background
+                    GradientPaint gp = new GradientPaint(0, 0, new Color(45, 17, 22), getWidth(), getHeight(), new Color(16, 18, 23));
+                    g2.setPaint(gp);
+                    g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 22, 22);
+                }
                 g2.dispose();
                 super.paintComponent(g);
             }
@@ -148,7 +223,9 @@ public class HomeFrame extends JFrame {
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        JLabel small = new JLabel("◆  ƯU ĐÃI ĐẶC BIỆT THÁNG 7");
+        
+        JLabel small = new JLabel("  ƯU ĐÃI ĐẶC BIỆT THÁNG 7");
+        small.setIcon(new DiamondIcon(Theme.GOLD)); // Vector diamond instead of font-glitched character
         small.setForeground(Theme.GOLD);
         small.setFont(new Font("Segoe UI", Font.BOLD, 11));
         content.add(small);
@@ -230,12 +307,12 @@ public class HomeFrame extends JFrame {
         JPanel cards = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 14));
         cards.setOpaque(false);
         List<Movie> movies = Arrays.asList(
-            new Movie("Quỷ Ám Kẻ Vô Thần", "Kinh dị / Hồi hộp", 118, "T18", 7.8),
-            new Movie("Vùng Đất Câm Lặng 3", "Kinh dị / Khoa học viễn tưởng", 104, "T16", 8.1),
-            new Movie("Hành Trình Cuối Cùng", "Hành động / Phiêu lưu", 132, "T13", 7.5),
-            new Movie("Mắt Bão", "Tâm lý / Chính kịch", 127, "T16", 8.4),
-            new Movie("Thám Tử Không Tên", "Hành động / Bí ẩn", 115, "T13", 7.9),
-            new Movie("Ánh Sáng Cuối Đường", "Tình cảm / Gia đình", 98, "P", 7.2)
+            new Movie("Obsession", "Kinh dị / Hồi hộp", 108, "T18", 7.8, "obsession.jpg"),
+            new Movie("Thỏ ơi!!", "Tâm lý", 127, "T16", 8.1, "Thooi.jpg"),
+            new Movie("Doraemon: Nobita và Lâu Đài Dưới Đáy Biển", "Hoạt hình/Phiêu lưu", 101, "P", 7.5, "Doraemon.jpg"),
+            new Movie("Backrooms: Thực Thể Quỷ Quyệt", "Kinh dị/Hồi hộp", 110, "T16", 8.4, "Backroom.jpg"),
+            new Movie("Tên Cậu Là Gì.", "Hoạt hình", 107, "T13", 7.9, "tencaulagi.jpg"),
+            new Movie("Minions & Quái vật", "Hoạt hình", 90, "P", 7.2, "minion.jpg")
         );
         for (Movie movie : movies) {
             cards.add(new MovieCard(movie));
@@ -243,4 +320,31 @@ public class HomeFrame extends JFrame {
         section.add(cards, BorderLayout.CENTER);
         return section;
     }
+}
+
+// 100% Vector-drawn Diamond Icon to prevent square tofu symbol glitches on any machine/font
+class DiamondIcon implements Icon {
+    private final Color color;
+
+    public DiamondIcon(Color color) {
+        this.color = color;
+    }
+
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(color);
+        
+        // Draw a clean diamond shape of size 8x8 centered
+        int cx = x + 4;
+        int cy = y + 7; // vertically centered with text
+        int[] xp = { cx, cx + 4, cx, cx - 4 };
+        int[] yp = { cy - 4, cy, cy + 4, cy };
+        g2.fillPolygon(xp, yp, 4);
+        g2.dispose();
+    }
+
+    @Override public int getIconWidth() { return 10; }
+    @Override public int getIconHeight() { return 14; }
 }
