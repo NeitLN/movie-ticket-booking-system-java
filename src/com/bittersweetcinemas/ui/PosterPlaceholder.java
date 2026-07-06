@@ -6,22 +6,36 @@ import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import javax.imageio.ImageIO;
 
+/**
+ * DYNAMIC POSTER COMPONENT
+ * -------------------------------------------------------------------------
+ * Dynamically loads a movie poster file if specified and exists, cropping and drawing
+ * it with clean rounded corners (14px radius).
+ * Falls back gracefully to a beautiful custom vector-drawn film reel logo if no image is present.
+ */
 public class PosterPlaceholder extends JComponent {
     private Image posterImage = null;
 
+    /**
+     * Default constructor (defaults to placeholder)
+     */
     public PosterPlaceholder() {
         this(null);
     }
 
+    /**
+     * Constructor that attempts to load a custom poster image from disk
+     */
     public PosterPlaceholder(String posterPath) {
         if (posterPath != null && !posterPath.trim().isEmpty()) {
             try {
                 File file = new File(posterPath);
                 if (file.exists()) {
+                    // Safe dynamic file loading (File Handling)
                     posterImage = ImageIO.read(file);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                e.printStackTrace(); // Exception handling
             }
         }
     }
@@ -29,26 +43,28 @@ public class PosterPlaceholder extends JComponent {
     @Override
     protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
+        
+        // Enable anti-aliasing and high-quality bilinear image scaling interpolations
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
         int w = getWidth();
         int h = getHeight();
 
-        // Rounded rectangle for matching border radius
+        // High-fidelity rounded rectangle path for clipping and border drawing
         RoundRectangle2D roundedRect = new RoundRectangle2D.Float(0, 0, w - 1, h - 1, 14, 14);
 
         if (posterImage != null) {
-            // Draw image clipped to rounded corners
+            // Draw custom poster image cropped to rounded corners
             g2.setClip(roundedRect);
             g2.drawImage(posterImage, 0, 0, w, h, this);
-            g2.setClip(null); // Restore clip
+            g2.setClip(null); // Restore paint clipping area
 
-            // Draw border
+            // Paint a thin border line around the poster image
             g2.setColor(Theme.BORDER);
             g2.drawRoundRect(0, 0, w - 1, h - 1, 14, 14);
         } else {
-            // Fallback default empty placeholder
+            // Paint fallback vector graphics when no image file is loaded
             g2.setColor(Theme.CARD_2);
             g2.fill(roundedRect);
             g2.setColor(Theme.BORDER);
@@ -56,12 +72,15 @@ public class PosterPlaceholder extends JComponent {
 
             int cx = w / 2;
             int cy = h / 2 - 10;
+            
+            // Draw red circular reel base
             g2.setColor(Theme.RED_DARK);
             g2.fillOval(cx - 24, cy - 24, 48, 48);
             g2.setStroke(new BasicStroke(1.2f));
             g2.setColor(Theme.GOLD);
             g2.drawOval(cx - 24, cy - 24, 48, 48);
 
+            // Draw film strip/wheel outline
             g2.setColor(Theme.GOLD);
             g2.draw(new RoundRectangle2D.Double(cx - 10, cy - 12, 20, 24, 4, 4));
             g2.drawLine(cx - 10, cy - 4, cx + 10, cy - 4);
@@ -69,6 +88,7 @@ public class PosterPlaceholder extends JComponent {
             g2.drawLine(cx - 3, cy - 12, cx - 3, cy + 12);
             g2.drawLine(cx + 4, cy - 12, cx + 4, cy + 12);
 
+            // Draw "POSTER" text underneath
             g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
             g2.setColor(Theme.SOFT);
             String text = "POSTER";
