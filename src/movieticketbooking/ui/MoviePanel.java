@@ -3,6 +3,7 @@ package movieticketbooking.ui;
 import movieticketbooking.exception.ValidationException;
 import movieticketbooking.model.Movie;
 import movieticketbooking.service.MovieService;
+import movieticketbooking.service.ScreeningService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -22,7 +23,8 @@ import java.util.List;
 public class MoviePanel extends JPanel {
     private final MovieService movieService;
     private final DashboardPanel dashboardPanel; // Reference to refresh storefront cards
-    
+    private final ScreeningService screeningService; // Phase 5: deletion integrity guard
+
     private final JTable movieTable;
     private final DefaultTableModel tableModel;
     
@@ -37,10 +39,11 @@ public class MoviePanel extends JPanel {
     private final JTextField searchField;
     private final JComboBox<String> sortCombo;
 
-    public MoviePanel(MovieService movieService, DashboardPanel dashboardPanel) {
+    public MoviePanel(MovieService movieService, DashboardPanel dashboardPanel, ScreeningService screeningService) {
         this.movieService = movieService;
         this.dashboardPanel = dashboardPanel;
-        
+        this.screeningService = screeningService;
+
         setLayout(new BorderLayout());
         setBackground(Theme.BG);
         setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -326,7 +329,13 @@ public class MoviePanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Please select a movie from the table to delete.", "Selection Required", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            int option = JOptionPane.showConfirmDialog(this, 
+            if (screeningService.hasScreeningsForMovie(id)) {
+                JOptionPane.showMessageDialog(this,
+                    "This movie cannot be deleted because it has existing screenings.",
+                    "Deletion Blocked", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int option = JOptionPane.showConfirmDialog(this,
                 "Are you absolutely sure you want to delete this movie?", 
                 "Verify Deletion", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             

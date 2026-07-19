@@ -1,6 +1,7 @@
 package movieticketbooking.ui;
 
 import movieticketbooking.service.MovieService;
+import movieticketbooking.service.ScreeningService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -21,12 +22,14 @@ public class MainFrame extends JFrame {
     private final JPanel contentPanel;
     private final JPanel sidebar;
     private final MovieService movieService;
+    private final ScreeningService screeningService;
 
     // Side navigation button indicators to highlight the active menu selection
     private RoundedButton activeMenuButton = null;
 
     public MainFrame() {
         movieService = new MovieService(); // Single shared data service loaded on startup
+        screeningService = new ScreeningService(movieService); // Shared screening service (Phase 5)
         
         setTitle("Bittersweet Cinemas - Movie Ticket Booking System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -97,9 +100,9 @@ public class MainFrame extends JFrame {
 
         // Core Screens Construction
         DashboardPanel dashboardView = new DashboardPanel(movieService);
-        MoviePanel moviesAdminView = new MoviePanel(movieService, dashboardView);
-        
-        JPanel screeningsView = createPlaceholderPanel("Screenings Management Panel", "Fulfills Phase 5 - Admin Screening Calendar & Room Collision Detection. Assigned to Student 2.");
+        MoviePanel moviesAdminView = new MoviePanel(movieService, dashboardView, screeningService);
+
+        ScreeningPanel screeningsView = new ScreeningPanel(screeningService, movieService);
         JPanel bookingsView = createPlaceholderPanel("Interactive Seat Selection Dialog", "Fulfills Phase 7 & 8 - GridLayout Interactive Seat Visualizer. Assigned to Student 3.");
         JPanel historyView = createPlaceholderPanel("Booking Transaction History", "Fulfills Phase 8 - JTable Booking Records & Ticket Cancellation/Cancellation Seat Releasing. Assigned to Student 3.");
         JPanel revenueView = createPlaceholderPanel("Financial Revenue Reporting Panel", "Fulfills Phase 6 - Dynamic Sales Earnings & Cancel-Exempt Incomes. Assigned to Student 2.");
@@ -237,7 +240,17 @@ public class MainFrame extends JFrame {
                 }
             }
         }
-        
+
+        // Refresh screening table and movie combo upon returning to Screenings
+        if ("Screenings".equalsIgnoreCase(cardName)) {
+            for (Component c : contentPanel.getComponents()) {
+                if (c instanceof ScreeningPanel) {
+                    ((ScreeningPanel) c).refreshView();
+                    break;
+                }
+            }
+        }
+
         cardLayout.show(contentPanel, cardName);
         revalidate();
         repaint();
