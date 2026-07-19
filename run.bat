@@ -17,5 +17,5 @@ if errorlevel 1 (
 )
 
 echo [3/3] Opening Bittersweet Cinemas UI...
-java -Dfile.encoding=UTF-8 -cp out com.bittersweetcinemas.ui.Main
+java -Dfile.encoding=UTF-8 -cp out movieticketbooking.Main
 pause

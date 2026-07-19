@@ -1,0 +1,7 @@
+MOV001|Obsession|Kinh dị / Hồi hộp|108|T18|7.8|
+MOV002|Thỏ ơi!!|Tâm lý|127|T16|8.1|
+MOV003|Doraemon: Nobita và Lâu Đài Dưới Đáy Biển|Hoạt hình/Phiêu lưu|101|P|7.5|
+MOV004|Backrooms: Thực Thể Quỷ Quyệt|Kinh dị/Hồi hộp|110|T16|8.4|
+MOV005|Tên Cậu Là Gì.|Hoạt hình|107|T13|7.9|
+MOV006|Minions & Quái vật|Hoạt hình|90|P|7.2|
+MOV007|sss|kin dị|120|T13|8.4|

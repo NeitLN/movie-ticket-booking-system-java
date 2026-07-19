@@ -1,36 +1,33 @@
-package com.bittersweetcinemas.ui;
+package movieticketbooking.ui;
 
+import movieticketbooking.model.Movie;
 import javax.swing.*;
 import java.awt.*;
 
 /**
- * MOVIE CARD PANEL COMPONENT
+ * ULTRA-COMPACT VERTICAL MOVIE CARD (Student 1 - Sidebar-Optimized)
  * -------------------------------------------------------------------------
  * Extends RoundedPanel (OOP: Inheritance).
- * Represents a clean, vertical, cinema-themed info-card for a movie.
- * Uses a BorderLayout root containing a BoxLayout vertical stack for details.
+ * Optimized to 160x275px width to fit exactly 6 movies per row alongside the 240px Left Sidebar.
+ * Retains perfect left-alignments, vector-drawn icons, and fits both buttons side-by-side.
  */
 public class MovieCard extends RoundedPanel {
     public MovieCard(Movie movie) {
         super(16, Theme.CARD, Theme.BORDER);
-        setPreferredSize(new Dimension(200, 315));
+        setPreferredSize(new Dimension(160, 275)); // Compact size optimized for 6-per-row with sidebar
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(12, 8, 12, 8)); // Thin margins to optimize space
+        setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8)); // Thin margins to optimize space
 
-        // NORTH: Movie Poster Area (Dynamically rendered)
+        // NORTH: Movie Poster Area (Dynamically rendered, scaled to fit 160px width)
         PosterPlaceholder poster = new PosterPlaceholder(movie.getPosterPath());
-        poster.setPreferredSize(new Dimension(184, 170));
+        poster.setPreferredSize(new Dimension(144, 140));
         add(poster, BorderLayout.NORTH);
 
         // CENTER: Movie Info Panel Stack (BoxLayout Y_AXIS)
         JPanel info = new JPanel();
         info.setOpaque(false);
-        info.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+        info.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
-
-        // Rows in a vertical BoxLayout align by their default "alignmentX" values.
-        // JPanels default to 0.5 (center) and JLabels to 0.0 (left), creating offset gaps.
-        // We set Component.LEFT_ALIGNMENT (0.0f) on all child panels/labels to keep them perfectly aligned.
 
         // Row 1: Title and Age Rating Classification Badge
         JPanel titleRow = new JPanel(new BorderLayout());
@@ -39,27 +36,26 @@ public class MovieCard extends RoundedPanel {
         
         JLabel title = new JLabel(movie.getTitle());
         title.setForeground(Theme.CREAM);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Slightly smaller font for compact width
         
-        JLabel badge = new JLabel(movie.getRating());
+        JLabel badge = new JLabel(movie.getAgeRating());
         Color badgeFg = Theme.RED;
         Color badgeBorder = Theme.RED_DARK;
-        // Dynamic visual coloring (Green for P - General Audience, Red/Pink for age restrictions)
-        if ("P".equalsIgnoreCase(movie.getRating())) {
+        if ("P".equalsIgnoreCase(movie.getAgeRating())) {
             badgeFg = new Color(40, 167, 69); // Modern Green
             badgeBorder = new Color(25, 105, 44); // Dark Green
         }
         badge.setForeground(badgeFg);
-        badge.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        badge.setFont(new Font("Segoe UI", Font.BOLD, 8));
         badge.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(badgeBorder),
-            BorderFactory.createEmptyBorder(2, 6, 2, 6)
+            BorderFactory.createEmptyBorder(1, 4, 1, 4)
         ));
         
         titleRow.add(title, BorderLayout.CENTER);
         titleRow.add(badge, BorderLayout.EAST);
         info.add(titleRow);
-        info.add(Box.createVerticalStrut(8));
+        info.add(Box.createVerticalStrut(6));
 
         // Row 2: Genre
         JLabel genre = new JLabel(movie.getGenre());
@@ -67,7 +63,7 @@ public class MovieCard extends RoundedPanel {
         genre.setFont(Theme.FONT_SMALL);
         genre.setAlignmentX(Component.LEFT_ALIGNMENT); // Align flush left
         info.add(genre);
-        info.add(Box.createVerticalStrut(8));
+        info.add(Box.createVerticalStrut(6));
 
         // Row 3: Meta details (Duration and rating score)
         JPanel meta = new JPanel(new BorderLayout());
@@ -79,25 +75,28 @@ public class MovieCard extends RoundedPanel {
         duration.setFont(Theme.FONT_SMALL);
         
         JLabel score = new JLabel(" " + movie.getScore());
-        score.setIcon(new StarIcon()); // Uses our custom-drawn vector StarIcon (100% font-bug safe)
+        score.setIcon(new StarIcon()); // Custom vector StarIcon
         score.setForeground(Theme.GOLD);
-        score.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        score.setFont(new Font("Segoe UI", Font.BOLD, 10));
         
         meta.add(duration, BorderLayout.WEST);
         meta.add(score, BorderLayout.EAST);
         info.add(meta);
-        info.add(Box.createVerticalStrut(12));
+        info.add(Box.createVerticalStrut(10));
 
         // Row 4: Call-to-action buttons ("Đặt vé" and "Chi tiết")
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         buttons.setOpaque(false);
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT); // Align flush left
         
-        // Buttons set to wider sizes (80px and 84px) with tightly packed FlowLayout gaps to fully display Vietnamese text
+        // Buttons adjusted to 64px and 68px to fit perfectly within the 144px inner width limit
         RoundedButton book = new RoundedButton("Đặt vé", Theme.RED, new Color(235, 48, 86), Color.WHITE, null);
-        book.setPreferredSize(new Dimension(80, 32));
+        book.setPreferredSize(new Dimension(64, 28));
+        book.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Compact font size
+        
         RoundedButton detail = new RoundedButton("Chi tiết", new Color(30, 25, 22), new Color(47, 38, 30), Theme.GOLD, Theme.BORDER);
-        detail.setPreferredSize(new Dimension(84, 32));
+        detail.setPreferredSize(new Dimension(68, 28));
+        detail.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Compact font size
         
         book.addActionListener(e -> JOptionPane.showMessageDialog(this, "Bạn bấm Đặt vé: " + movie.getTitle()));
         detail.addActionListener(e -> JOptionPane.showMessageDialog(this, "Bạn bấm Chi tiết: " + movie.getTitle()));
@@ -110,12 +109,7 @@ public class MovieCard extends RoundedPanel {
 }
 
 /**
- * 100% VECTOR-DRAWN GOLD STAR ICON
- * -------------------------------------------------------------------------
- * Implements javax.swing.Icon (OOP: Interface Abstraction).
- * Standard Unicode rating star symbols ('★') show up as empty hollow squares (tofu blocks)
- * on systems with incomplete font engines. This class bypasses the OS font engine entirely
- * by drawing a smooth, anti-aliased vector star polygon directly using geometric coordinates.
+ * 100% VECTOR-DRAWN GOLD STAR ICON (Custom Platform-Independent Icon)
  */
 class StarIcon implements Icon {
     @Override
@@ -124,14 +118,13 @@ class StarIcon implements Icon {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(Theme.GOLD);
         
-        // Geometric calculations for centered 10-point star polygon
-        int cx = x + 6;
-        int cy = y + 6;
+        int cx = x + 5;
+        int cy = y + 5;
         int[] xPoints = new int[10];
         int[] yPoints = new int[10];
         for (int i = 0; i < 10; i++) {
             double angle = i * Math.PI / 5 - Math.PI / 2;
-            double r = (i % 2 == 0) ? 6 : 2.5; // Alternating outer (6px) and inner (2.5px) radius
+            double r = (i % 2 == 0) ? 5 : 2.0; // Scaled specifically to fit 10x10 area inside compact card
             xPoints[i] = (int) (cx + r * Math.cos(angle));
             yPoints[i] = (int) (cy + r * Math.sin(angle));
         }
@@ -139,6 +132,6 @@ class StarIcon implements Icon {
         g2.dispose();
     }
 
-    @Override public int getIconWidth() { return 12; }
-    @Override public int getIconHeight() { return 12; }
+    @Override public int getIconWidth() { return 10; }
+    @Override public int getIconHeight() { return 10; }
 }

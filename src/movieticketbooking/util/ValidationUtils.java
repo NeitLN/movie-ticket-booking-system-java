@@ -1,0 +1,54 @@
+package movieticketbooking.util;
+
+import movieticketbooking.exception.ValidationException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+public final class ValidationUtils {
+    private ValidationUtils() {}
+
+    public static void validateId(String id, String fieldName) throws ValidationException {
+        if (id == null || id.trim().isEmpty()) {
+            throw new ValidationException(fieldName + " cannot be empty.");
+        }
+    }
+
+    public static void validateTitle(String title) throws ValidationException {
+        if (title == null || title.trim().isEmpty()) {
+            throw new ValidationException("Movie title cannot be empty.");
+        }
+    }
+
+    public static void validateDuration(int duration) throws ValidationException {
+        if (duration <= 0) {
+            throw new ValidationException("Movie duration must be greater than 0 minutes.");
+        }
+    }
+
+    public static void validatePrice(double price, String fieldName) throws ValidationException {
+        if (price <= 0.0) {
+            throw new ValidationException(fieldName + " must be greater than 0.");
+        }
+    }
+
+    public static void validateScreeningDateTime(LocalDate date, LocalTime time) throws ValidationException {
+        if (date == null) {
+            throw new ValidationException("Screening date cannot be null.");
+        }
+        if (time == null) {
+            throw new ValidationException("Screening start time cannot be null.");
+        }
+    }
+
+    public static void validatePhone(String phone) throws ValidationException {
+        if (phone == null || !phone.matches("^0\\d{9}$")) {
+            throw new ValidationException("Invalid phone number format. Must be 10 digits starting with 0.");
+        }
+    }
+
+    public static void validateSeatsNotEmpty(int numSeats) throws ValidationException {
+        if (numSeats == 0) {
+            throw new ValidationException("Booking must have at least one seat selected.");
+        }
+    }
+}

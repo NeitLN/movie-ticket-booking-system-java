@@ -1,0 +1,282 @@
+package movieticketbooking.ui;
+
+import movieticketbooking.service.MovieService;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.io.File;
+
+/**
+ * APPLICATION MAIN FRAME CORE (Student 1 - Phase 1 Foundation)
+ * -------------------------------------------------------------------------
+ * This is the parent window frame of the application (MainFrame) utilizing a 
+ * CardLayout content area on the right and an elegant sidebar navigation panel on the left.
+ * Houses the Dashboard (storefront showcase), Movies management (JTable JScrollPane CRUD),
+ * and stub containers for Screenings (Student 2), Bookings (Student 3),
+ * Booking History (Student 3), and Revenue Report (Student 2).
+ */
+public class MainFrame extends JFrame {
+    private final CardLayout cardLayout;
+    private final JPanel contentPanel;
+    private final JPanel sidebar;
+    private final MovieService movieService;
+
+    // Side navigation button indicators to highlight the active menu selection
+    private RoundedButton activeMenuButton = null;
+
+    public MainFrame() {
+        movieService = new MovieService(); // Single shared data service loaded on startup
+        
+        setTitle("Bittersweet Cinemas - Movie Ticket Booking System");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setMinimumSize(new Dimension(1280, 760));
+        setSize(1366, 768);
+        setLocationRelativeTo(null); // Center window on user screen
+
+        // Root container splitting Left Sidebar and Right CardLayout Content Area
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Theme.BG);
+
+        // --- LEFT COLUMN: Sidebar Navigation Panel ---
+        sidebar = new JPanel();
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.setPreferredSize(new Dimension(240, 768));
+        sidebar.setBackground(Theme.NAV);
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
+
+        // 1. Sidebar Header (Brand Logo Mark and Text)
+        sidebar.add(buildSidebarLogoHeader());
+        sidebar.add(Box.createVerticalStrut(10));
+        
+        // Horizontal marquee dotted lights divider
+        DottedDivider headerDivider = new DottedDivider();
+        headerDivider.setPreferredSize(new Dimension(240, 8));
+        headerDivider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 8));
+        sidebar.add(headerDivider);
+        sidebar.add(Box.createVerticalStrut(20));
+
+        // 2. Navigation Action Buttons Container
+        JPanel navButtonsContainer = new JPanel();
+        navButtonsContainer.setLayout(new BoxLayout(navButtonsContainer, BoxLayout.Y_AXIS));
+        navButtonsContainer.setOpaque(false);
+        navButtonsContainer.setBorder(new EmptyBorder(0, 16, 0, 16));
+
+        // Instantiate navigation components (Student 1 required routes)
+        RoundedButton btnDashboard = createNavButton("Dashboard");
+        RoundedButton btnMovies = createNavButton("Movies (Admin)");
+        RoundedButton btnScreenings = createNavButton("Screenings");
+        RoundedButton btnBookings = createNavButton("Bookings (Seat)");
+        RoundedButton btnHistory = createNavButton("Booking History");
+        RoundedButton btnRevenue = createNavButton("Revenue Report");
+        RoundedButton btnExit = createNavButton("Exit");
+
+        // Pile them vertically with elastic spacing
+        navButtonsContainer.add(btnDashboard);
+        navButtonsContainer.add(Box.createVerticalStrut(12));
+        navButtonsContainer.add(btnMovies);
+        navButtonsContainer.add(Box.createVerticalStrut(12));
+        navButtonsContainer.add(btnScreenings);
+        navButtonsContainer.add(Box.createVerticalStrut(12));
+        navButtonsContainer.add(btnBookings);
+        navButtonsContainer.add(Box.createVerticalStrut(12));
+        navButtonsContainer.add(btnHistory);
+        navButtonsContainer.add(Box.createVerticalStrut(12));
+        navButtonsContainer.add(btnRevenue);
+        navButtonsContainer.add(Box.createVerticalStrut(12));
+        navButtonsContainer.add(btnExit);
+        
+        sidebar.add(navButtonsContainer);
+        sidebar.add(Box.createVerticalGlue()); // Elastic spring pushes everything to top
+        root.add(sidebar, BorderLayout.WEST);
+
+        // --- RIGHT COLUMN: CardLayout Main Content Panel ---
+        cardLayout = new CardLayout();
+        contentPanel = new JPanel(cardLayout);
+        contentPanel.setOpaque(false);
+
+        // Core Screens Construction
+        DashboardPanel dashboardView = new DashboardPanel(movieService);
+        MoviePanel moviesAdminView = new MoviePanel(movieService, dashboardView);
+        
+        JPanel screeningsView = createPlaceholderPanel("Screenings Management Panel", "Fulfills Phase 5 - Admin Screening Calendar & Room Collision Detection. Assigned to Student 2.");
+        JPanel bookingsView = createPlaceholderPanel("Interactive Seat Selection Dialog", "Fulfills Phase 7 & 8 - GridLayout Interactive Seat Visualizer. Assigned to Student 3.");
+        JPanel historyView = createPlaceholderPanel("Booking Transaction History", "Fulfills Phase 8 - JTable Booking Records & Ticket Cancellation/Cancellation Seat Releasing. Assigned to Student 3.");
+        JPanel revenueView = createPlaceholderPanel("Financial Revenue Reporting Panel", "Fulfills Phase 6 - Dynamic Sales Earnings & Cancel-Exempt Incomes. Assigned to Student 2.");
+
+        // Stack them into CardLayout
+        contentPanel.add(dashboardView, "Dashboard");
+        contentPanel.add(moviesAdminView, "Movies (Admin)");
+        contentPanel.add(screeningsView, "Screenings");
+        contentPanel.add(bookingsView, "Bookings (Seat)");
+        contentPanel.add(historyView, "Booking History");
+        contentPanel.add(revenueView, "Revenue Report");
+
+        root.add(contentPanel, BorderLayout.CENTER);
+        setContentPane(root);
+
+        // Initialize active selections
+        selectNavMenu(btnDashboard, "Dashboard");
+
+        // Event-driven navigation routing
+        btnDashboard.addActionListener(e -> selectNavMenu(btnDashboard, "Dashboard"));
+        btnMovies.addActionListener(e -> selectNavMenu(btnMovies, "Movies (Admin)"));
+        btnScreenings.addActionListener(e -> selectNavMenu(btnScreenings, "Screenings"));
+        btnBookings.addActionListener(e -> selectNavMenu(btnBookings, "Bookings (Seat)"));
+        btnHistory.addActionListener(e -> selectNavMenu(btnHistory, "Booking History"));
+        btnRevenue.addActionListener(e -> selectNavMenu(btnRevenue, "Revenue Report"));
+        btnExit.addActionListener(e -> {
+            int verify = JOptionPane.showConfirmDialog(this, "Are you sure you want to close the system?", "Confirm Exit", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (verify == JOptionPane.YES_OPTION) {
+                System.exit(0);
+            }
+        });
+    }
+
+    /**
+     * Renders brand logo and name header in sidebar with high compatibility.
+     */
+    private JComponent buildSidebarLogoHeader() {
+        JPanel logo = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 16));
+        logo.setOpaque(false);
+        logo.setMaximumSize(new Dimension(240, 74));
+        logo.setPreferredSize(new Dimension(240, 74));
+
+        ImageIcon logoIcon = loadAndProcessLogo();
+        JComponent mark;
+        if (logoIcon != null) {
+            JLabel imgLabel = new JLabel(logoIcon);
+            imgLabel.setPreferredSize(new Dimension(34, 34));
+            mark = imgLabel;
+        } else {
+            RoundedPanel fallback = new RoundedPanel(8, Theme.RED);
+            fallback.setPreferredSize(new Dimension(30, 30));
+            fallback.setLayout(new GridBagLayout());
+            JLabel m = new JLabel("▦");
+            m.setForeground(Color.WHITE);
+            m.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            fallback.add(m);
+            mark = fallback;
+        }
+
+        JLabel text = new JLabel("<html><div style='line-height:10px'>BITTERSWEET<br><span style='color:#E9B838'>CINEMAS</span></div></html>");
+        text.setForeground(Theme.CREAM);
+        text.setFont(Theme.FONT_LOGO);
+        logo.add(mark);
+        logo.add(text);
+        return logo;
+    }
+
+    /**
+     * Programmatic white background removal of logo image.
+     */
+    private ImageIcon loadAndProcessLogo() {
+        try {
+            File file = new File("images (1).jpg");
+            if (!file.exists()) return null;
+            
+            java.awt.image.BufferedImage source = javax.imageio.ImageIO.read(file);
+            int w = source.getWidth();
+            int h = source.getHeight();
+            java.awt.image.BufferedImage target = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
+                    int rgb = source.getRGB(x, y);
+                    int r = (rgb >> 16) & 0xFF;
+                    int g = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    
+                    if (r > 240 && g > 240 && b > 240) {
+                        target.setRGB(x, y, 0x00FFFFFF & rgb);
+                    } else {
+                        target.setRGB(x, y, rgb);
+                    }
+                }
+            }
+            Image scaled = target.getScaledInstance(34, 34, Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Sidebar button generator.
+     */
+    private RoundedButton createNavButton(String text) {
+        RoundedButton btn = new RoundedButton(text, Theme.NAV, Theme.TOP_BAR, Theme.MUTED, null);
+        btn.setPreferredSize(new Dimension(208, 38));
+        btn.setMaximumSize(new Dimension(208, 38));
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return btn;
+    }
+
+    /**
+     * Switches right card container screen and updates left button selections.
+     */
+    private void selectNavMenu(RoundedButton button, String cardName) {
+        // Reset old selection
+        if (activeMenuButton != null) {
+            activeMenuButton.setForeground(Theme.MUTED);
+            activeMenuButton.setBorder(null);
+        }
+        
+        // Highlight active selection
+        activeMenuButton = button;
+        activeMenuButton.setForeground(Theme.GOLD);
+        activeMenuButton.setBorder(BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.GOLD)); // gold left stripe
+        
+        // Refresh movie cards upon returning to storefront Dashboard
+        if ("Dashboard".equalsIgnoreCase(cardName)) {
+            // Find and cast to DashboardPanel
+            for (Component c : contentPanel.getComponents()) {
+                if (c instanceof DashboardPanel) {
+                    ((DashboardPanel) c).refreshMovieCards();
+                    break;
+                }
+            }
+        }
+        
+        cardLayout.show(contentPanel, cardName);
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Builds clean, beautifully styled placeholder panels for Student 2 & 3's pending phases.
+     */
+    private JPanel createPlaceholderPanel(String title, String description) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(Theme.BG);
+        
+        RoundedPanel card = new RoundedPanel(16, Theme.BG_2, Theme.BORDER);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(new EmptyBorder(32, 32, 32, 32));
+        card.setPreferredSize(new Dimension(600, 260));
+        
+        JLabel icon = new JLabel("▦");
+        icon.setForeground(Theme.RED);
+        icon.setFont(new Font("Segoe UI", Font.BOLD, 48));
+        icon.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setForeground(Theme.CREAM);
+        lblTitle.setFont(Theme.FONT_HEADING);
+        lblTitle.setBorder(new EmptyBorder(16, 0, 8, 0));
+        lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        JLabel lblDesc = new JLabel("<html><center>" + description + "</center></html>");
+        lblDesc.setBackground(Color.RED);
+        lblDesc.setForeground(Theme.MUTED);
+        lblDesc.setFont(Theme.FONT_NORMAL);
+        lblDesc.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        card.add(icon);
+        card.add(lblTitle);
+        card.add(lblDesc);
+        
+        panel.add(card);
+        return panel;
+    }
+}
