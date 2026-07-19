@@ -3,7 +3,9 @@ package movieticketbooking.model;
 import movieticketbooking.exception.ValidationException;
 import movieticketbooking.util.ValidationUtils;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Objects;
 
 public class Screening {
     private String screeningId;
@@ -84,6 +86,24 @@ public class Screening {
 
     public double getBasePrice() { return basePrice; }
     public void setBasePrice(double basePrice) { this.basePrice = basePrice; }
+
+    /** Combines screeningDate and startTime for interval math (sorting, conflict detection). */
+    public LocalDateTime getStartDateTime() {
+        return LocalDateTime.of(screeningDate, startTime);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Screening)) return false;
+        Screening other = (Screening) o;
+        return screeningId != null && screeningId.equalsIgnoreCase(other.screeningId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(screeningId == null ? null : screeningId.toLowerCase());
+    }
 
     @Override
     public String toString() {
