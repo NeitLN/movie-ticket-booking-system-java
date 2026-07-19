@@ -1,5 +1,8 @@
 package movieticketbooking.model;
 
+import movieticketbooking.exception.ValidationException;
+import movieticketbooking.util.ValidationUtils;
+
 public class Seat {
     private String seatNumber;
     private boolean booked;
@@ -11,6 +14,10 @@ public class Seat {
 
     public Seat(String seatNumber) {
         this(seatNumber, false);
+    }
+
+    public void validate() throws ValidationException {
+        ValidationUtils.validateRequiredText(seatNumber, "Seat number");
     }
 
     public String getSeatNumber() { return seatNumber; }

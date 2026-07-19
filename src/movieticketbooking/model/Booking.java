@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Booking {
+    private static final String DEFAULT_STATUS = "CONFIRMED";
+
     private String bookingId;
     private String screeningId;
     private String customerName;
@@ -19,9 +21,9 @@ public class Booking {
         this.screeningId = screeningId;
         this.customerName = customerName;
         this.phone = phone;
-        this.seats = seats != null ? seats : new ArrayList<>();
+        this.seats = seats == null ? new ArrayList<>() : new ArrayList<>(seats);
         this.totalPrice = totalPrice;
-        this.status = status;
+        this.status = normalizeStatus(status);
     }
 
     public void validate() throws ValidationException {
@@ -29,8 +31,17 @@ public class Booking {
         ValidationUtils.validateId(screeningId, "Screening ID");
         ValidationUtils.validateId(customerName, "Customer Name");
         ValidationUtils.validatePhone(phone);
-        ValidationUtils.validateSeatsNotEmpty(seats.size());
-        ValidationUtils.validatePrice(totalPrice, "Total Price");
+        if (seats == null || seats.isEmpty()) {
+            throw new ValidationException("Booking must have at least one seat selected.");
+        }
+        for (Seat seat : seats) {
+            if (seat == null) {
+                throw new ValidationException("Booking seats cannot contain null elements.");
+            }
+            seat.validate();
+        }
+        ValidationUtils.validateNonNegativePrice(totalPrice, "Total Price");
+        status = normalizeStatus(status);
     }
 
     public String toTxtLine() {
@@ -54,8 +65,8 @@ public class Booking {
         if (line == null || line.trim().isEmpty()) {
             throw new ValidationException("Cannot parse empty booking line.");
         }
-        String[] tokens = line.split("\\|");
-        if (tokens.length != 7) {
+        String[] tokens = line.split("\\|", -1);
+        if (tokens.length < 6 || tokens.length > 7) {
             throw new ValidationException("Incorrect booking line tokens length: " + tokens.length);
         }
         try {
@@ -73,8 +84,12 @@ public class Booking {
                 }
             }
             double totalPrice = Double.parseDouble(tokens[5].trim());
-            String status = tokens[6].trim();
-            return new Booking(bookingId, screeningId, name, phone, seatList, totalPrice, status);
+            String status = tokens.length == 7 ? tokens[6].trim() : DEFAULT_STATUS;
+            Booking booking = new Booking(bookingId, screeningId, name, phone, seatList, totalPrice, status);
+            booking.validate();
+            return booking;
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
             throw new ValidationException("Failed parsing booking tokens: " + e.getMessage());
         }
@@ -93,14 +108,20 @@ public class Booking {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
-    public List<Seat> getSeats() { return seats; }
-    public void setSeats(List<Seat> seats) { this.seats = seats; }
+    public List<Seat> getSeats() { return new ArrayList<>(seats); }
+    public void setSeats(List<Seat> seats) {
+        this.seats = seats == null ? new ArrayList<>() : new ArrayList<>(seats);
+    }
 
     public double getTotalPrice() { return totalPrice; }
     public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
 
     public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public void setStatus(String status) { this.status = normalizeStatus(status); }
+
+    private static String normalizeStatus(String status) {
+        return status == null || status.trim().isEmpty() ? DEFAULT_STATUS : status.trim();
+    }
 
     @Override
     public String toString() {

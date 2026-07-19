@@ -1,24 +1,20 @@
-## Chạy trong VS Code
+# Movie Ticket Booking System
 
-Mở nguyên folder này trong VS Code, rồi chạy:
+Ứng dụng desktop Java Swing dùng OOP, Collections, xử lý file UTF-8, sự kiện và kiểm tra dữ liệu.
+
+## Chạy trên Windows
+
+Mở thư mục dự án trong VS Code hoặc Command Prompt, sau đó chạy:
 
 ```bat
 .\run.bat
 ```
 
-Hoặc chạy thủ công:
+Script tự biên dịch toàn bộ source và chạy `movieticketbooking.Main`, kể cả khi đường dẫn dự án có khoảng trắng hoặc ký tự tiếng Việt.
 
-```bash
-find src -name "*.java" > sources.txt
-javac -encoding UTF-8 -d out @sources.txt
-java -Dfile.encoding=UTF-8 -cp out com.bittersweetcinemas.ui.Main
-```
+## Cấu trúc chính
 
-## File chính
-
-- `Main.java`: chạy app
-- `HomeFrame.java`: layout trang chủ
-- `MovieCard.java`: card phim
-- `PosterPlaceholder.java`: khung poster trống
-- `Theme.java`: màu sắc/font
-- `RoundedButton.java`, `RoundedPanel.java`: component trang trí
+- `movieticketbooking.Main`: entry point.
+- `MainFrame`: cửa sổ chính và navigation.
+- `MoviePanel`: giao diện quản lý phim.
+- `data/*.txt`: dữ liệu cục bộ của ứng dụng.

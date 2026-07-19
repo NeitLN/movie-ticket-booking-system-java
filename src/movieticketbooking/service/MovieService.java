@@ -5,18 +5,22 @@ import movieticketbooking.model.Movie;
 import movieticketbooking.util.FileManager;
 import movieticketbooking.util.IdGenerator;
 
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MovieService {
     private static final String FILE_PATH = "data/movies.txt";
     private final List<Movie> movies;
+    private boolean lastLoadHadRecords;
+    private int lastLoadValidCount;
+    private int lastLoadInvalidCount;
 
     public MovieService() {
         this.movies = new ArrayList<>();
         loadMoviesFromFile();
         
-        if (movies.isEmpty()) {
+        if (!lastLoadHadRecords) {
             bootstrapDefaultMovies();
         }
     }
@@ -37,13 +41,27 @@ public class MovieService {
     public void loadMoviesFromFile() {
         movies.clear();
         List<String> lines = FileManager.readLines(FILE_PATH);
+        lastLoadHadRecords = !lines.isEmpty();
+        lastLoadValidCount = 0;
+        lastLoadInvalidCount = 0;
+
         for (String line : lines) {
             try {
                 Movie movie = Movie.fromTxtLine(line);
+                movie.validate();
                 movies.add(movie);
+                lastLoadValidCount++;
             } catch (ValidationException e) {
+                lastLoadInvalidCount++;
                 System.err.println("Skipping malformed movie record: " + line + " - " + e.getMessage());
             }
+        }
+
+        if (lastLoadHadRecords && lastLoadValidCount == 0 && lastLoadInvalidCount > 0) {
+            System.err.println(
+                "Movie data file contains only invalid records. " +
+                "The original file was not replaced."
+            );
         }
     }
 
@@ -79,7 +97,12 @@ public class MovieService {
             }
         }
         movies.add(movie);
-        saveMoviesToFile();
+        try {
+            saveMoviesToFile();
+        } catch (UncheckedIOException e) {
+            movies.remove(movie);
+            throw e;
+        }
     }
 
     public void updateMovie(Movie updatedMovie) throws ValidationException {
@@ -99,8 +122,13 @@ public class MovieService {
         if (index == -1) {
             throw new ValidationException("Movie with ID " + updatedMovie.getMovieId() + " not found.");
         }
-        movies.set(index, updatedMovie);
-        saveMoviesToFile();
+        Movie previousMovie = movies.set(index, updatedMovie);
+        try {
+            saveMoviesToFile();
+        } catch (UncheckedIOException e) {
+            movies.set(index, previousMovie);
+            throw e;
+        }
     }
 
     public void deleteMovie(String movieId) throws ValidationException {
@@ -115,8 +143,13 @@ public class MovieService {
         if (index == -1) {
             throw new ValidationException("Movie with ID " + movieId + " not found.");
         }
-        movies.remove(index);
-        saveMoviesToFile();
+        Movie removedMovie = movies.remove(index);
+        try {
+            saveMoviesToFile();
+        } catch (UncheckedIOException e) {
+            movies.add(index, removedMovie);
+            throw e;
+        }
     }
 
     public List<Movie> searchMovies(String query) {

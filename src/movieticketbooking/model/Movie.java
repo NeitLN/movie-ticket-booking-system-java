@@ -29,6 +29,7 @@ public class Movie {
     public void validate() throws ValidationException {
         ValidationUtils.validateId(movieId, "Movie ID");
         ValidationUtils.validateTitle(title);
+        ValidationUtils.validateRequiredText(genre, "Genre");
         ValidationUtils.validateDuration(duration);
         if (ageRating == null || ageRating.trim().isEmpty()) {
             throw new ValidationException("Age Rating cannot be empty.");

@@ -1,18 +1,20 @@
 #!/bin/bash
 
-# Enforce UTF-8 output formatting
-export LANG=en_US.UTF-8
+set -u
+
+SOURCE_LIST="sources.txt"
+trap 'rm -f "$SOURCE_LIST"' EXIT
 
 echo "[1/3] Cleaning old build..."
 rm -rf out
 mkdir out
 
 echo "[2/3] Compiling Java Swing UI..."
-find src -name "*.java" > sources.txt
-javac -encoding UTF-8 -d out @sources.txt
+find src -name "*.java" > "$SOURCE_LIST"
+javac -encoding UTF-8 -d out @"$SOURCE_LIST"
 if [ $? -ne 0 ]; then
     echo ""
-    echo "Compile failed. Please check your JDK installation."
+    echo "Compilation failed. Review the javac errors above."
     exit 1
 fi
 

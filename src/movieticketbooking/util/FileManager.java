@@ -2,6 +2,11 @@ package movieticketbooking.util;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,9 +16,9 @@ public final class FileManager {
     public static List<String> readLines(String filePath) {
         List<String> lines = new ArrayList<>();
         ensureFileExists(filePath);
-        File file = new File(filePath);
+        Path path = Paths.get(filePath);
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+                Files.newBufferedReader(path, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (!line.trim().isEmpty() && !line.startsWith("#")) {
@@ -21,37 +26,76 @@ public final class FileManager {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error reading file: " + filePath + " - " + e.getMessage());
+            throw new UncheckedIOException("Could not read file " + filePath, e);
         }
         return lines;
     }
 
     public static void writeLines(String filePath, List<String> lines) {
         ensureFileExists(filePath);
-        File file = new File(filePath);
-        try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file, false), StandardCharsets.UTF_8))) {
-            for (String line : lines) {
-                writer.write(line);
-                writer.newLine();
+        Path destination = Paths.get(filePath).toAbsolutePath();
+        Path parentDirectory = destination.getParent();
+        Path temporaryFile = null;
+
+        try {
+            temporaryFile = Files.createTempFile(
+                parentDirectory,
+                destination.getFileName().toString() + ".",
+                ".tmp"
+            );
+
+            try (BufferedWriter writer = Files.newBufferedWriter(temporaryFile, StandardCharsets.UTF_8)) {
+                for (String line : lines) {
+                    writer.write(line);
+                    writer.newLine();
+                }
             }
+
+            try {
+                Files.move(
+                    temporaryFile,
+                    destination,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE
+                );
+            } catch (AtomicMoveNotSupportedException e) {
+                // Some file systems do not support atomic moves. The fallback still
+                // replaces the destination only after the temporary file is complete.
+                Files.move(temporaryFile, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+            temporaryFile = null;
         } catch (IOException e) {
-            System.err.println("Error writing to file: " + filePath + " - " + e.getMessage());
+            deleteTemporaryFile(temporaryFile, e);
+            throw new UncheckedIOException("Could not write file " + filePath, e);
+        } catch (RuntimeException e) {
+            deleteTemporaryFile(temporaryFile, e);
+            throw e;
+        }
+    }
+
+    private static void deleteTemporaryFile(Path temporaryFile, Throwable originalFailure) {
+        if (temporaryFile == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(temporaryFile);
+        } catch (IOException cleanupFailure) {
+            originalFailure.addSuppressed(cleanupFailure);
         }
     }
 
     public static void ensureFileExists(String filePath) {
         try {
-            File file = new File(filePath);
-            File parentDir = file.getParentFile();
-            if (parentDir != null && !parentDir.exists()) {
-                parentDir.mkdirs();
+            Path path = Paths.get(filePath);
+            Path parentDir = path.getParent();
+            if (parentDir != null) {
+                Files.createDirectories(parentDir);
             }
-            if (!file.exists()) {
-                file.createNewFile();
+            if (Files.notExists(path)) {
+                Files.createFile(path);
             }
         } catch (IOException e) {
-            System.err.println("Could not auto-create file: " + filePath + " - " + e.getMessage());
+            throw new UncheckedIOException("Could not create file " + filePath, e);
         }
     }
 }

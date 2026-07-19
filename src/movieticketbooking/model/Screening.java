@@ -56,7 +56,11 @@ public class Screening {
             LocalTime time = LocalTime.parse(tokens[3].trim());
             String room = tokens[4].trim();
             double price = Double.parseDouble(tokens[5].trim());
-            return new Screening(screeningId, movieId, date, time, room, price);
+            Screening screening = new Screening(screeningId, movieId, date, time, room, price);
+            screening.validate();
+            return screening;
+        } catch (ValidationException e) {
+            throw e;
         } catch (Exception e) {
             throw new ValidationException("Failed parsing screening tokens: " + e.getMessage());
         }

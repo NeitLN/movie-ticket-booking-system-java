@@ -19,6 +19,12 @@ public final class ValidationUtils {
         }
     }
 
+    public static void validateRequiredText(String value, String fieldName) throws ValidationException {
+        if (value == null || value.trim().isEmpty()) {
+            throw new ValidationException(fieldName + " cannot be empty.");
+        }
+    }
+
     public static void validateDuration(int duration) throws ValidationException {
         if (duration <= 0) {
             throw new ValidationException("Movie duration must be greater than 0 minutes.");
@@ -26,8 +32,14 @@ public final class ValidationUtils {
     }
 
     public static void validatePrice(double price, String fieldName) throws ValidationException {
-        if (price <= 0.0) {
+        if (!Double.isFinite(price) || price <= 0.0) {
             throw new ValidationException(fieldName + " must be greater than 0.");
+        }
+    }
+
+    public static void validateNonNegativePrice(double price, String fieldName) throws ValidationException {
+        if (!Double.isFinite(price) || price < 0.0) {
+            throw new ValidationException(fieldName + " must be a finite, non-negative value.");
         }
     }
 

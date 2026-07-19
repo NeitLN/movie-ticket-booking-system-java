@@ -8,6 +8,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.io.UncheckedIOException;
 import java.util.List;
 
 /**
@@ -267,10 +268,7 @@ public class MoviePanel extends JPanel {
                 int duration = Integer.parseInt(durationField.getText().trim());
                 String ageRating = ageRatingCombo.getSelectedItem().toString();
                 
-                double score = 0.0;
-                try {
-                    score = Double.parseDouble(scoreField.getText().trim());
-                } catch (NumberFormatException ignored) {}
+                double score = parseOptionalScore();
                 
                 String poster = posterField.getText().trim();
                 
@@ -285,6 +283,8 @@ public class MoviePanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Duration and score fields must contain valid numbers.", "Input Error", JOptionPane.ERROR_MESSAGE);
             } catch (ValidationException ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
+            } catch (UncheckedIOException ex) {
+                showFileError(ex);
             }
         });
 
@@ -300,10 +300,7 @@ public class MoviePanel extends JPanel {
                 int duration = Integer.parseInt(durationField.getText().trim());
                 String ageRating = ageRatingCombo.getSelectedItem().toString();
                 
-                double score = 0.0;
-                try {
-                    score = Double.parseDouble(scoreField.getText().trim());
-                } catch (NumberFormatException ignored) {}
+                double score = parseOptionalScore();
                 
                 String poster = posterField.getText().trim();
                 
@@ -318,6 +315,8 @@ public class MoviePanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Duration and score fields must contain valid numbers.", "Input Error", JOptionPane.ERROR_MESSAGE);
             } catch (ValidationException ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
+            } catch (UncheckedIOException ex) {
+                showFileError(ex);
             }
         });
 
@@ -340,6 +339,8 @@ public class MoviePanel extends JPanel {
                     dashboardPanel.refreshMovieCards();
                 } catch (ValidationException ex) {
                     JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
+                } catch (UncheckedIOException ex) {
+                    showFileError(ex);
                 }
             }
         });
@@ -397,6 +398,24 @@ public class MoviePanel extends JPanel {
         ageRatingCombo.setSelectedIndex(0);
         scoreField.setText("");
         posterField.setText("");
+    }
+
+    private double parseOptionalScore() {
+        String value = scoreField.getText().trim();
+        if (value.isEmpty()) {
+            return 0.0;
+        }
+        double score = Double.parseDouble(value);
+        if (!Double.isFinite(score)) {
+            throw new NumberFormatException("Score must be finite.");
+        }
+        return score;
+    }
+
+    private void showFileError(UncheckedIOException ex) {
+        JOptionPane.showMessageDialog(this,
+            "Could not save changes. Please check the data file and try again.\n" + ex.getMessage(),
+            "File Error", JOptionPane.ERROR_MESSAGE);
     }
 
     private void refreshTable(List<Movie> list) {
