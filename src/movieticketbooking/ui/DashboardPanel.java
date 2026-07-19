@@ -2,6 +2,8 @@ package movieticketbooking.ui;
 
 import movieticketbooking.model.Movie;
 import movieticketbooking.service.MovieService;
+import movieticketbooking.service.ReportService;
+import movieticketbooking.service.ScreeningService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -10,7 +12,12 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * CUSTOMER DASHBOARD SHOWCASE PANEL (Student 1 Custom Framework)
@@ -27,21 +34,38 @@ import java.util.List;
  */
 public class DashboardPanel extends JPanel {
     private final MovieService movieService;
+    private final ScreeningService screeningService;
+    private final ReportService reportService;
     private final JPanel cardsContainer;
     private final JTextField searchField;
     private final JScrollPane scrollPane;
     private final JPanel scrollContentWrapper;
 
-    public DashboardPanel(MovieService movieService) {
+    private JLabel totalMoviesValue;
+    private JLabel totalScreeningsValue;
+    private JLabel upcomingScreeningsValue;
+    private JLabel confirmedBookingsValue;
+    private JLabel ticketsSoldValue;
+    private JLabel grossRevenueValue;
+    private JLabel statsErrorLabel;
+
+    public DashboardPanel(MovieService movieService, ScreeningService screeningService, ReportService reportService) {
         this.movieService = movieService;
-        
+        this.screeningService = screeningService;
+        this.reportService = reportService;
+
         setLayout(new BorderLayout());
         setBackground(Theme.BG);
         setFocusable(true); // Enable this panel to receive focus when clicked
 
-        // 1. Hero Promo Banner Area
-        add(buildHero(), BorderLayout.NORTH);
-        
+        // 1. Hero Promo Banner Area + 1b. Real-data stats bar (Phase 6), stacked vertically
+        JPanel topStack = new JPanel();
+        topStack.setOpaque(false);
+        topStack.setLayout(new BoxLayout(topStack, BoxLayout.Y_AXIS));
+        topStack.add(buildHero());
+        topStack.add(buildStatsBar());
+        add(topStack, BorderLayout.NORTH);
+
         // 2. Movie List Section
         JPanel section = new JPanel(new BorderLayout());
         section.setOpaque(false);
@@ -138,7 +162,9 @@ public class DashboardPanel extends JPanel {
     }
 
     /**
-     * Refreshes the display of movie cards dynamically from MovieService.
+     * Refreshes the display of movie cards dynamically from MovieService, and the
+     * real-data stats bar alongside it (both read already-in-memory service state -
+     * no disk I/O here; see refreshDashboard() for the disk-reloading variant).
      */
     public void refreshMovieCards() {
         cardsContainer.removeAll();
@@ -147,6 +173,106 @@ public class DashboardPanel extends JPanel {
             cardsContainer.add(new MovieCard(movie));
         }
         recalculateContainerHeight();
+        refreshStats();
+    }
+
+    /**
+     * Full dashboard refresh: reloads bookings from disk (never rewriting the file)
+     * via ReportService, then re-renders stats and movie cards. Wired to MainFrame's
+     * Dashboard navigation hook so opening the Dashboard always shows current data.
+     */
+    public void refreshDashboard() {
+        reportService.reloadBookings();
+        refreshMovieCards();
+    }
+
+    private JComponent buildStatsBar() {
+        JPanel bar = new JPanel(new GridLayout(1, 6, 10, 0));
+        bar.setOpaque(false);
+        bar.setBorder(new EmptyBorder(0, 20, 14, 20));
+        bar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 76));
+        bar.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        totalMoviesValue = new JLabel("0");
+        totalScreeningsValue = new JLabel("0");
+        upcomingScreeningsValue = new JLabel("0");
+        confirmedBookingsValue = new JLabel("0");
+        ticketsSoldValue = new JLabel("0");
+        grossRevenueValue = new JLabel("0 ₫");
+
+        bar.add(createStatCard("Total Movies", totalMoviesValue));
+        bar.add(createStatCard("Total Screenings", totalScreeningsValue));
+        bar.add(createStatCard("Upcoming Screenings", upcomingScreeningsValue));
+        bar.add(createStatCard("Confirmed Bookings", confirmedBookingsValue));
+        bar.add(createStatCard("Tickets Sold", ticketsSoldValue));
+        bar.add(createStatCard("Gross Revenue", grossRevenueValue));
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
+
+        statsErrorLabel = new JLabel(" ");
+        statsErrorLabel.setForeground(Theme.RED);
+        statsErrorLabel.setFont(Theme.FONT_SMALL);
+        statsErrorLabel.setBorder(new EmptyBorder(0, 24, 0, 24));
+
+        wrapper.add(bar, BorderLayout.CENTER);
+        wrapper.add(statsErrorLabel, BorderLayout.SOUTH);
+        return wrapper;
+    }
+
+    private JComponent createStatCard(String title, JLabel valueLabel) {
+        RoundedPanel card = new RoundedPanel(14, Theme.BG_2, Theme.BORDER);
+        card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(10, 12, 10, 12));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setForeground(Theme.MUTED);
+        titleLabel.setFont(Theme.FONT_SMALL);
+
+        valueLabel.setForeground(Theme.CREAM);
+        valueLabel.setFont(Theme.FONT_BOLD);
+
+        card.add(titleLabel, BorderLayout.NORTH);
+        card.add(valueLabel, BorderLayout.CENTER);
+        return card;
+    }
+
+    /**
+     * Recomputes all six stat values from current in-memory service state.
+     * Movie/screening counts always reflect current state (their services keep
+     * memory and disk in sync on every CRUD operation). Booking/revenue values
+     * reflect whatever ReportService currently holds - if its last reload failed,
+     * a clear error is shown instead of a misleading zero.
+     */
+    private void refreshStats() {
+        totalMoviesValue.setText(String.valueOf(movieService.getAllMovies().size()));
+        totalScreeningsValue.setText(String.valueOf(screeningService.getAllScreenings().size()));
+        upcomingScreeningsValue.setText(String.valueOf(screeningService.getUpcomingScreeningCount()));
+
+        if (reportService.isLastLoadFailed()) {
+            confirmedBookingsValue.setText("N/A");
+            ticketsSoldValue.setText("N/A");
+            grossRevenueValue.setText("N/A");
+            statsErrorLabel.setText("Error: " + reportService.getLastLoadErrorMessage());
+        } else {
+            confirmedBookingsValue.setText(String.valueOf(reportService.getConfirmedBookingCount()));
+            ticketsSoldValue.setText(String.valueOf(reportService.getTicketsSold()));
+            grossRevenueValue.setText(formatVnd(reportService.getGrossRevenue()));
+            statsErrorLabel.setText(" ");
+        }
+    }
+
+    /**
+     * Formats the BigDecimal directly (DecimalFormat has a dedicated BigDecimal code path) so
+     * arbitrarily large finite totals never get narrowed through long/double and can never throw
+     * ArithmeticException/overflow - only the displayed text is rounded (HALF_UP), not the underlying value.
+     */
+    private static String formatVnd(BigDecimal amount) {
+        DecimalFormat format = new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(Locale.US));
+        format.setRoundingMode(RoundingMode.HALF_UP);
+        return format.format(amount) + " ₫";
     }
 
     /**

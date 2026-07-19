@@ -1,6 +1,7 @@
 package movieticketbooking.ui;
 
 import movieticketbooking.service.MovieService;
+import movieticketbooking.service.ReportService;
 import movieticketbooking.service.ScreeningService;
 
 import javax.swing.*;
@@ -23,6 +24,7 @@ public class MainFrame extends JFrame {
     private final JPanel sidebar;
     private final MovieService movieService;
     private final ScreeningService screeningService;
+    private final ReportService reportService;
 
     // Side navigation button indicators to highlight the active menu selection
     private RoundedButton activeMenuButton = null;
@@ -30,6 +32,7 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         movieService = new MovieService(); // Single shared data service loaded on startup
         screeningService = new ScreeningService(movieService); // Shared screening service (Phase 5)
+        reportService = new ReportService(movieService, screeningService); // Shared read-only reporting service (Phase 6)
         
         setTitle("Bittersweet Cinemas - Movie Ticket Booking System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -71,7 +74,7 @@ public class MainFrame extends JFrame {
         RoundedButton btnScreenings = createNavButton("Screenings");
         RoundedButton btnBookings = createNavButton("Bookings (Seat)");
         RoundedButton btnHistory = createNavButton("Booking History");
-        RoundedButton btnRevenue = createNavButton("Revenue Report");
+        RoundedButton btnRevenue = createNavButton("Revenue Reports");
         RoundedButton btnExit = createNavButton("Exit");
 
         // Pile them vertically with elastic spacing
@@ -99,13 +102,13 @@ public class MainFrame extends JFrame {
         contentPanel.setOpaque(false);
 
         // Core Screens Construction
-        DashboardPanel dashboardView = new DashboardPanel(movieService);
+        DashboardPanel dashboardView = new DashboardPanel(movieService, screeningService, reportService);
         MoviePanel moviesAdminView = new MoviePanel(movieService, dashboardView, screeningService);
 
         ScreeningPanel screeningsView = new ScreeningPanel(screeningService, movieService);
         JPanel bookingsView = createPlaceholderPanel("Interactive Seat Selection Dialog", "Fulfills Phase 7 & 8 - GridLayout Interactive Seat Visualizer. Assigned to Student 3.");
         JPanel historyView = createPlaceholderPanel("Booking Transaction History", "Fulfills Phase 8 - JTable Booking Records & Ticket Cancellation/Cancellation Seat Releasing. Assigned to Student 3.");
-        JPanel revenueView = createPlaceholderPanel("Financial Revenue Reporting Panel", "Fulfills Phase 6 - Dynamic Sales Earnings & Cancel-Exempt Incomes. Assigned to Student 2.");
+        RevenueReportPanel revenueView = new RevenueReportPanel(reportService, movieService);
 
         // Stack them into CardLayout
         contentPanel.add(dashboardView, "Dashboard");
@@ -113,7 +116,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(screeningsView, "Screenings");
         contentPanel.add(bookingsView, "Bookings (Seat)");
         contentPanel.add(historyView, "Booking History");
-        contentPanel.add(revenueView, "Revenue Report");
+        contentPanel.add(revenueView, "Revenue Reports");
 
         root.add(contentPanel, BorderLayout.CENTER);
         setContentPane(root);
@@ -127,7 +130,7 @@ public class MainFrame extends JFrame {
         btnScreenings.addActionListener(e -> selectNavMenu(btnScreenings, "Screenings"));
         btnBookings.addActionListener(e -> selectNavMenu(btnBookings, "Bookings (Seat)"));
         btnHistory.addActionListener(e -> selectNavMenu(btnHistory, "Booking History"));
-        btnRevenue.addActionListener(e -> selectNavMenu(btnRevenue, "Revenue Report"));
+        btnRevenue.addActionListener(e -> selectNavMenu(btnRevenue, "Revenue Reports"));
         btnExit.addActionListener(e -> {
             int verify = JOptionPane.showConfirmDialog(this, "Are you sure you want to close the system?", "Confirm Exit", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (verify == JOptionPane.YES_OPTION) {
@@ -230,12 +233,11 @@ public class MainFrame extends JFrame {
         activeMenuButton.setForeground(Theme.GOLD);
         activeMenuButton.setBorder(BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.GOLD)); // gold left stripe
         
-        // Refresh movie cards upon returning to storefront Dashboard
+        // Refresh dashboard metrics and movie cards upon returning to storefront Dashboard
         if ("Dashboard".equalsIgnoreCase(cardName)) {
-            // Find and cast to DashboardPanel
             for (Component c : contentPanel.getComponents()) {
                 if (c instanceof DashboardPanel) {
-                    ((DashboardPanel) c).refreshMovieCards();
+                    ((DashboardPanel) c).refreshDashboard();
                     break;
                 }
             }
@@ -246,6 +248,16 @@ public class MainFrame extends JFrame {
             for (Component c : contentPanel.getComponents()) {
                 if (c instanceof ScreeningPanel) {
                     ((ScreeningPanel) c).refreshView();
+                    break;
+                }
+            }
+        }
+
+        // Reload booking/report data and refresh the table upon returning to Revenue Reports
+        if ("Revenue Reports".equalsIgnoreCase(cardName)) {
+            for (Component c : contentPanel.getComponents()) {
+                if (c instanceof RevenueReportPanel) {
+                    ((RevenueReportPanel) c).refreshReport();
                     break;
                 }
             }

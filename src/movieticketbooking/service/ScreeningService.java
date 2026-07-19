@@ -245,6 +245,25 @@ public class ScreeningService {
         }
     }
 
+    /**
+     * A screening counts as "upcoming" when its start date/time is strictly after
+     * the reference moment - a screening later today qualifies, one earlier today does not.
+     */
+    public int getUpcomingScreeningCount() {
+        return getUpcomingScreeningCount(LocalDateTime.now());
+    }
+
+    /** Package-private overload so tests can pass a fixed reference instant instead of the wall clock. */
+    int getUpcomingScreeningCount(LocalDateTime referenceNow) {
+        int count = 0;
+        for (Screening s : screenings) {
+            if (s.getStartDateTime().isAfter(referenceNow)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public boolean hasScreeningsForMovie(String movieId) {
         if (movieId == null || movieId.trim().isEmpty()) {
             return false;
