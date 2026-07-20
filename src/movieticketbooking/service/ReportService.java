@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -278,7 +279,11 @@ public class ReportService {
         boolean dateFilterActive = filter.getStartDate() != null || filter.getEndDate() != null;
 
         Map<String, ScreeningAccumulator> byScreening = new LinkedHashMap<>();
+        Map<String, MoviePerformanceAccumulator> byMovie = new LinkedHashMap<>();
         int unresolvedExcluded = 0;
+        int unresolvedConfirmed = 0;
+        int unresolvedTickets = 0;
+        BigDecimal unresolvedRevenue = BigDecimal.ZERO;
 
         for (Booking b : bookings) {
             if (!isRevenueEligible(b.getStatus())) {
@@ -291,9 +296,9 @@ public class ReportService {
             }
 
             Screening screening = resolveScreening(b);
+            Movie movie = screening != null ? resolveMovie(screening) : null;
 
             if (filter.getMovieId() != null) {
-                Movie movie = screening != null ? resolveMovie(screening) : null;
                 if (movie == null || !movie.getMovieId().equalsIgnoreCase(filter.getMovieId())) {
                     continue;
                 }
@@ -319,7 +324,21 @@ public class ReportService {
                 k -> new ScreeningAccumulator(b.getScreeningId(), resolveMovieLabel(b), screeningDate));
             acc.confirmedBookings++;
             acc.ticketsSold += b.getSeats().size();
-            acc.grossRevenue = acc.grossRevenue.add(BigDecimal.valueOf(b.getTotalPrice()));
+            BigDecimal bookingRevenue = BigDecimal.valueOf(b.getTotalPrice());
+            acc.grossRevenue = acc.grossRevenue.add(bookingRevenue);
+
+            if (movie != null) {
+                String movieKey = movie.getMovieId().toLowerCase(Locale.ROOT);
+                MoviePerformanceAccumulator movieAcc = byMovie.computeIfAbsent(movieKey,
+                    k -> new MoviePerformanceAccumulator(movie.getMovieId(), movie.getTitle()));
+                movieAcc.confirmedBookings++;
+                movieAcc.ticketsSold += b.getSeats().size();
+                movieAcc.grossRevenue = movieAcc.grossRevenue.add(bookingRevenue);
+            } else {
+                unresolvedConfirmed++;
+                unresolvedTickets += b.getSeats().size();
+                unresolvedRevenue = unresolvedRevenue.add(bookingRevenue);
+            }
         }
 
         List<ScreeningRevenueRow> rows = new ArrayList<>();
@@ -340,7 +359,25 @@ public class ReportService {
             ? BigDecimal.ZERO
             : totalRevenue.divide(BigDecimal.valueOf(totalConfirmed), 2, RoundingMode.HALF_UP);
 
-        return new ReportData(rows, totalRevenue, totalConfirmed, totalTickets, avg, unresolvedExcluded);
+        List<MoviePerformance> moviePerformance = new ArrayList<>();
+        for (MoviePerformanceAccumulator acc : byMovie.values()) {
+            moviePerformance.add(acc.toMoviePerformance());
+        }
+        moviePerformance.sort(MoviePerformance.rankingComparator());
+
+        List<MoviePerformance> topRevenueMovies = new ArrayList<>();
+        if (!moviePerformance.isEmpty() && moviePerformance.get(0).getGrossRevenue().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal maximumRevenue = moviePerformance.get(0).getGrossRevenue();
+            for (MoviePerformance performance : moviePerformance) {
+                if (performance.getGrossRevenue().compareTo(maximumRevenue) == 0) {
+                    topRevenueMovies.add(performance);
+                }
+            }
+            topRevenueMovies.sort(MoviePerformance.tieComparator());
+        }
+
+        return new ReportData(rows, totalRevenue, totalConfirmed, totalTickets, avg, unresolvedExcluded,
+            moviePerformance, topRevenueMovies, unresolvedConfirmed, unresolvedTickets, unresolvedRevenue);
     }
 
     private static final class ScreeningAccumulator {
@@ -359,6 +396,23 @@ public class ReportService {
 
         ScreeningRevenueRow toRow() {
             return new ScreeningRevenueRow(screeningId, movieLabel, screeningDate, confirmedBookings, ticketsSold, grossRevenue);
+        }
+    }
+
+    private static final class MoviePerformanceAccumulator {
+        final String movieId;
+        final String movieTitle;
+        int confirmedBookings;
+        int ticketsSold;
+        BigDecimal grossRevenue = BigDecimal.ZERO;
+
+        MoviePerformanceAccumulator(String movieId, String movieTitle) {
+            this.movieId = movieId;
+            this.movieTitle = movieTitle;
+        }
+
+        MoviePerformance toMoviePerformance() {
+            return new MoviePerformance(movieId, movieTitle, confirmedBookings, ticketsSold, grossRevenue);
         }
     }
 
@@ -392,6 +446,44 @@ public class ReportService {
             return Comparator
                 .comparing((ScreeningRevenueRow r) -> r.screeningDate, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(r -> r.screeningId);
+        }
+    }
+
+    /** Immutable totals for one resolved movie within the active report filter. */
+    public static final class MoviePerformance {
+        private final String movieId;
+        private final String movieTitle;
+        private final int confirmedBookingCount;
+        private final int ticketsSold;
+        private final BigDecimal grossRevenue;
+
+        MoviePerformance(String movieId, String movieTitle, int confirmedBookingCount,
+                         int ticketsSold, BigDecimal grossRevenue) {
+            this.movieId = movieId;
+            this.movieTitle = movieTitle;
+            this.confirmedBookingCount = confirmedBookingCount;
+            this.ticketsSold = ticketsSold;
+            this.grossRevenue = grossRevenue;
+        }
+
+        public String getMovieId() { return movieId; }
+        public String getMovieTitle() { return movieTitle; }
+        public int getConfirmedBookingCount() { return confirmedBookingCount; }
+        public int getTicketsSold() { return ticketsSold; }
+        public BigDecimal getGrossRevenue() { return grossRevenue; }
+
+        static Comparator<MoviePerformance> rankingComparator() {
+            return Comparator
+                .comparing(MoviePerformance::getGrossRevenue, Comparator.reverseOrder())
+                .thenComparing(Comparator.comparingInt(MoviePerformance::getTicketsSold).reversed())
+                .thenComparing(MoviePerformance::getMovieTitle, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(MoviePerformance::getMovieId);
+        }
+
+        static Comparator<MoviePerformance> tieComparator() {
+            return Comparator
+                .comparing(MoviePerformance::getMovieTitle, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(MoviePerformance::getMovieId);
         }
     }
 
@@ -443,15 +535,28 @@ public class ReportService {
         private final int ticketsSold;
         private final BigDecimal averageBookingValue;
         private final int unresolvedExcludedCount;
+        private final List<MoviePerformance> moviePerformance;
+        private final List<MoviePerformance> topRevenueMovies;
+        private final int unresolvedConfirmedBookingCount;
+        private final int unresolvedTicketsSold;
+        private final BigDecimal unresolvedGrossRevenue;
 
         ReportData(List<ScreeningRevenueRow> rows, BigDecimal grossRevenue, int confirmedBookingCount,
-                   int ticketsSold, BigDecimal averageBookingValue, int unresolvedExcludedCount) {
-            this.rows = rows;
+                   int ticketsSold, BigDecimal averageBookingValue, int unresolvedExcludedCount,
+                   List<MoviePerformance> moviePerformance, List<MoviePerformance> topRevenueMovies,
+                   int unresolvedConfirmedBookingCount, int unresolvedTicketsSold,
+                   BigDecimal unresolvedGrossRevenue) {
+            this.rows = new ArrayList<>(rows);
             this.grossRevenue = grossRevenue;
             this.confirmedBookingCount = confirmedBookingCount;
             this.ticketsSold = ticketsSold;
             this.averageBookingValue = averageBookingValue;
             this.unresolvedExcludedCount = unresolvedExcludedCount;
+            this.moviePerformance = new ArrayList<>(moviePerformance);
+            this.topRevenueMovies = new ArrayList<>(topRevenueMovies);
+            this.unresolvedConfirmedBookingCount = unresolvedConfirmedBookingCount;
+            this.unresolvedTicketsSold = unresolvedTicketsSold;
+            this.unresolvedGrossRevenue = unresolvedGrossRevenue;
         }
 
         public List<ScreeningRevenueRow> getRows() { return new ArrayList<>(rows); }
@@ -459,6 +564,11 @@ public class ReportService {
         public int getConfirmedBookingCount() { return confirmedBookingCount; }
         public int getTicketsSold() { return ticketsSold; }
         public BigDecimal getAverageBookingValue() { return averageBookingValue; }
+        public List<MoviePerformance> getMoviePerformance() { return new ArrayList<>(moviePerformance); }
+        public List<MoviePerformance> getTopRevenueMovies() { return new ArrayList<>(topRevenueMovies); }
+        public int getUnresolvedConfirmedBookingCount() { return unresolvedConfirmedBookingCount; }
+        public int getUnresolvedTicketsSold() { return unresolvedTicketsSold; }
+        public BigDecimal getUnresolvedGrossRevenue() { return unresolvedGrossRevenue; }
 
         /** Bookings excluded from this filtered result because their screening is missing (only relevant when a date filter is active). */
         public int getUnresolvedExcludedCount() { return unresolvedExcludedCount; }

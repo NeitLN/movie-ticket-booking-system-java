@@ -22,8 +22,8 @@ import java.util.Date;
  * -------------------------------------------------------------------------
  * Read-only reporting surface over ReportService. Never creates, edits, or
  * deletes bookings - it only displays aggregates and lets the user filter
- * by movie and screening date. All business math (revenue eligibility,
- * aggregation, date filtering, unresolved-record handling) lives in
+ * by movie, screening, and screening date. All business math (revenue eligibility,
+ * per-movie aggregation, ranking, filtering, unresolved-record handling) lives in
  * ReportService; this panel only renders what the service returns.
  */
 public class RevenueReportPanel extends JPanel {
@@ -37,6 +37,7 @@ public class RevenueReportPanel extends JPanel {
     private final JLabel confirmedBookingsValue;
     private final JLabel ticketsSoldValue;
     private final JLabel averageBookingValue;
+    private final JLabel topRevenueMovieValue;
 
     private final JComboBox<ScreeningPanel.MovieOption> movieFilterCombo;
     private final JComboBox<ScreeningOption> screeningFilterCombo;
@@ -77,7 +78,7 @@ public class RevenueReportPanel extends JPanel {
         top.add(heading);
 
         // --- Summary cards ---
-        JPanel summaryRow = new JPanel(new GridLayout(1, 4, 12, 0));
+        JPanel summaryRow = new JPanel(new GridLayout(1, 5, 12, 0));
         summaryRow.setOpaque(false);
         summaryRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         summaryRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
@@ -86,11 +87,14 @@ public class RevenueReportPanel extends JPanel {
         confirmedBookingsValue = new JLabel("0");
         ticketsSoldValue = new JLabel("0");
         averageBookingValue = new JLabel("0 ₫");
+        topRevenueMovieValue = new JLabel("N/A");
 
         summaryRow.add(createStatCard("Gross Revenue", grossRevenueValue));
         summaryRow.add(createStatCard("Confirmed Bookings", confirmedBookingsValue));
         summaryRow.add(createStatCard("Tickets Sold", ticketsSoldValue));
         summaryRow.add(createStatCard("Average Booking Value", averageBookingValue));
+        summaryRow.add(createStatCard("Highest Revenue Movie", topRevenueMovieValue));
+        topRevenueMovieValue.setFont(Theme.FONT_BOLD);
 
         top.add(Box.createVerticalStrut(12));
         top.add(summaryRow);
@@ -149,7 +153,7 @@ public class RevenueReportPanel extends JPanel {
         add(top, BorderLayout.NORTH);
 
         // --- Table ---
-        String[] columnNames = {"Movie", "Screening ID", "Screening Date", "Confirmed Bookings", "Tickets Sold", "Gross Revenue"};
+        String[] columnNames = {"Rank", "Movie", "Movie ID", "Confirmed Bookings", "Tickets Sold", "Gross Revenue"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -339,27 +343,39 @@ public class RevenueReportPanel extends JPanel {
 
     private void renderReportData(ReportService.ReportData data) {
         tableModel.setRowCount(0);
-        for (ReportService.ScreeningRevenueRow row : data.getRows()) {
+        int position = 0;
+        int rank = 0;
+        java.math.BigDecimal previousRevenue = null;
+        for (ReportService.MoviePerformance row : data.getMoviePerformance()) {
+            if (previousRevenue == null || row.getGrossRevenue().compareTo(previousRevenue) != 0) {
+                rank = position + 1;
+            }
             tableModel.addRow(new Object[]{
-                row.getMovieLabel(),
-                row.getScreeningId(),
-                row.getScreeningDate() != null ? row.getScreeningDate().toString() : "N/A",
-                row.getConfirmedBookings(),
+                rank,
+                row.getMovieTitle(),
+                row.getMovieId(),
+                row.getConfirmedBookingCount(),
                 row.getTicketsSold(),
                 FormatUtils.formatVnd(row.getGrossRevenue())
             });
+            previousRevenue = row.getGrossRevenue();
+            position++;
         }
 
         grossRevenueValue.setText(FormatUtils.formatVnd(data.getGrossRevenue()));
         confirmedBookingsValue.setText(String.valueOf(data.getConfirmedBookingCount()));
         ticketsSoldValue.setText(String.valueOf(data.getTicketsSold()));
         averageBookingValue.setText(FormatUtils.formatVnd(data.getAverageBookingValue()));
+        topRevenueMovieValue.setText(formatTopRevenueMovies(data));
+        topRevenueMovieValue.setToolTipText(topRevenueMovieValue.getText());
 
-        int rowCount = data.getRows().size();
-        if (rowCount == 0) {
+        int rowCount = data.getMoviePerformance().size();
+        if (data.getConfirmedBookingCount() == 0) {
             statusLabel.setText("No confirmed bookings found for the current filter.");
+        } else if (rowCount == 0) {
+            statusLabel.setText("No resolved movie revenue is available for the current filter.");
         } else {
-            statusLabel.setText("Showing " + rowCount + " screening" + (rowCount == 1 ? "" : "s") + ".");
+            statusLabel.setText("Showing " + rowCount + " ranked movie" + (rowCount == 1 ? "" : "s") + ".");
         }
 
         StringBuilder warning = new StringBuilder();
@@ -376,7 +392,40 @@ public class RevenueReportPanel extends JPanel {
                 .append(data.getUnresolvedExcludedCount() == 1 ? " of them was" : " of them were")
                 .append(" excluded from this date range because its screening date is unknown.");
         }
+        if (data.getUnresolvedConfirmedBookingCount() > 0) {
+            if (warning.length() > 0) {
+                warning.append(' ');
+            }
+            warning.append("Matching unresolved totals: ")
+                .append(data.getUnresolvedConfirmedBookingCount()).append(" confirmed booking")
+                .append(data.getUnresolvedConfirmedBookingCount() == 1 ? "" : "s")
+                .append(", ").append(data.getUnresolvedTicketsSold()).append(" ticket")
+                .append(data.getUnresolvedTicketsSold() == 1 ? "" : "s")
+                .append(", ").append(FormatUtils.formatVnd(data.getUnresolvedGrossRevenue()))
+                .append("; excluded from movie ranking.");
+        }
         unresolvedLabel.setText(warning.length() == 0 ? " " : warning.toString());
+    }
+
+    private String formatTopRevenueMovies(ReportService.ReportData data) {
+        java.util.List<ReportService.MoviePerformance> winners = data.getTopRevenueMovies();
+        if (winners.isEmpty()) {
+            return "N/A";
+        }
+
+        StringBuilder text = new StringBuilder();
+        if (winners.size() > 1) {
+            text.append("Tie: ");
+        }
+        for (int i = 0; i < winners.size(); i++) {
+            if (i > 0) {
+                text.append(" / ");
+            }
+            ReportService.MoviePerformance winner = winners.get(i);
+            text.append(winner.getMovieTitle()).append(" (").append(winner.getMovieId()).append(')');
+        }
+        text.append(" — ").append(FormatUtils.formatVnd(winners.get(0).getGrossRevenue()));
+        return text.toString();
     }
 
     private JComponent createStatCard(String title, JLabel valueLabel) {
