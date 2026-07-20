@@ -1,7 +1,8 @@
-MOV001|Obsession|Kinh dị / Hồi hộp|108|T18|7.8|
-MOV002|Thỏ ơi!!|Tâm lý|127|T16|8.1|
-MOV003|Doraemon: Nobita và Lâu Đài Dưới Đáy Biển|Hoạt hình/Phiêu lưu|101|P|7.5|
-MOV004|Backrooms: Thực Thể Quỷ Quyệt|Kinh dị/Hồi hộp|110|T16|8.4|
-MOV005|Tên Cậu Là Gì.|Hoạt hình|107|T13|7.9|
-MOV006|Minions & Quái vật|Hoạt hình|90|P|7.2|
+MOV001|Obsession|Kinh dị / Hồi hộp|108|T18|7.8|obsession.jpg
+MOV002|Thỏ ơi!!|Tâm lý|127|T16|8.1|Thooi.jpg
+MOV003|Doraemon: Nobita và Lâu Đài Dưới Đáy Biển|Hoạt hình/Phiêu lưu|101|P|7.5|Doraemon.jpg
+MOV004|Backrooms: Thực Thể Quỷ Quyệt|Kinh dị/Hồi hộp|110|T16|8.4|Backroom.jpg
+MOV005|Tên Cậu Là Gì.|Hoạt hình|107|T13|7.9|tencaulagi.jpg
+MOV006|Minions & Quái vật|Hoạt hình|90|P|7.2|minion.jpg
 MOV007|sss|kin dị|120|T13|8.4|
+MOV008|hai|Tâm Lý|140|T16|9.0|

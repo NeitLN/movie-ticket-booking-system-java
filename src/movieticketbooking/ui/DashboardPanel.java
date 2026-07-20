@@ -200,12 +200,13 @@ public class DashboardPanel extends JPanel {
         ticketsSoldValue = new JLabel("0");
         grossRevenueValue = new JLabel("0 ₫");
 
-        bar.add(createStatCard("Total Movies", totalMoviesValue));
-        bar.add(createStatCard("Total Screenings", totalScreeningsValue));
-        bar.add(createStatCard("Upcoming Screenings", upcomingScreeningsValue));
-        bar.add(createStatCard("Confirmed Bookings", confirmedBookingsValue));
-        bar.add(createStatCard("Tickets Sold", ticketsSoldValue));
-        bar.add(createStatCard("Gross Revenue", grossRevenueValue));
+        // Matching labels exactly to your image: "Total Movies", "Screenings", "Upcoming", "Confirmed Bookings", "Tickets Sold", "Gross Revenue"
+        bar.add(createStatCard("Total Movies", totalMoviesValue, new StatMovieIcon()));
+        bar.add(createStatCard("Screenings", totalScreeningsValue, new StatScreeningIcon()));
+        bar.add(createStatCard("Upcoming", upcomingScreeningsValue, new StatUpcomingIcon()));
+        bar.add(createStatCard("Confirmed Bookings", confirmedBookingsValue, new StatBookingIcon()));
+        bar.add(createStatCard("Tickets Sold", ticketsSoldValue, new StatTicketIcon()));
+        bar.add(createStatCard("Gross Revenue", grossRevenueValue, new StatRevenueIcon()));
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -222,20 +223,36 @@ public class DashboardPanel extends JPanel {
         return wrapper;
     }
 
-    private JComponent createStatCard(String title, JLabel valueLabel) {
+    private JComponent createStatCard(String title, JLabel valueLabel, Icon icon) {
         RoundedPanel card = new RoundedPanel(14, Theme.BG_2, Theme.BORDER);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(10, 12, 10, 12));
+        card.setBorder(new EmptyBorder(8, 10, 8, 10)); // Compact padding to maximize text space
+
+        // Left icon container (WEST)
+        if (icon != null) {
+            JLabel iconLabel = new JLabel(icon);
+            iconLabel.setBorder(new EmptyBorder(0, 0, 0, 6)); // Compact 6px gap to prevent truncation
+            card.add(iconLabel, BorderLayout.WEST);
+        }
+
+        // Right text container (CENTER)
+        JPanel textContainer = new JPanel();
+        textContainer.setOpaque(false);
+        textContainer.setLayout(new BoxLayout(textContainer, BoxLayout.Y_AXIS));
 
         JLabel titleLabel = new JLabel(title);
         titleLabel.setForeground(Theme.MUTED);
-        titleLabel.setFont(Theme.FONT_SMALL);
+        titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10)); // 10px compact font to guarantee zero truncation
 
         valueLabel.setForeground(Theme.CREAM);
-        valueLabel.setFont(Theme.FONT_BOLD);
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 13)); // Adjusted value font size
 
-        card.add(titleLabel, BorderLayout.NORTH);
-        card.add(valueLabel, BorderLayout.CENTER);
+        textContainer.add(titleLabel);
+        textContainer.add(Box.createVerticalStrut(2));
+        textContainer.add(valueLabel);
+
+        card.add(textContainer, BorderLayout.CENTER);
+
         return card;
     }
 
@@ -281,13 +298,14 @@ public class DashboardPanel extends JPanel {
      * Also dynamically calculates centered padding so cards are perfectly centered horizontally.
      */
     private void recalculateContainerHeight() {
-        List<Movie> activeMovies = movieService.getAllMovies();
-        int cardCount = activeMovies.size();
+        int cardCount = cardsContainer.getComponentCount(); // Dynamically look at actual added cards
         if (cardCount == 0) {
             cardsContainer.setPreferredSize(new Dimension(0, 0));
             scrollContentWrapper.setBorder(new EmptyBorder(0, 0, 0, 0));
             cardsContainer.revalidate();
             cardsContainer.repaint();
+            scrollContentWrapper.revalidate();
+            scrollContentWrapper.repaint();
             return;
         }
 
@@ -303,16 +321,13 @@ public class DashboardPanel extends JPanel {
         int cardWidth = 160; // Original high-fidelity compact card width
         int minHGap = 10;
         int vGap = 14;
-        int cardHeight = 275; // Original compact card height
+        int cardHeight = 260; // Original compact card height
 
         // Calculate columns mathematically based on available width and minimum gap
         int cols = Math.max(1, (availWidth + minHGap) / (cardWidth + minHGap));
         // Allow up to 6 columns maximum to sit side-by-side in one row!
         if (cols > 6) {
             cols = 6;
-        }
-        if (cols > cardCount) {
-            cols = cardCount;
         }
         
         int rows = (int) Math.ceil((double) cardCount / cols);
@@ -347,6 +362,10 @@ public class DashboardPanel extends JPanel {
         cardsContainer.setPreferredSize(new Dimension(totalGridWidth, calculatedHeight));
         cardsContainer.revalidate();
         cardsContainer.repaint();
+
+        // Propagate size changes to the wrapper & viewport so scrollbars are instantly updated
+        scrollContentWrapper.revalidate();
+        scrollContentWrapper.repaint();
     }
 
     /**
@@ -364,39 +383,9 @@ public class DashboardPanel extends JPanel {
             cardsContainer.add(new MovieCard(movie));
         }
         
-        // Recalculate centered layout height for the filtered results subset
-        int cardCount = results.size();
-        int width = scrollPane.getViewport().getWidth();
-        if (width <= 0) width = 1040;
-        
-        int availWidth = width - 24;
-        int cols = Math.max(1, (availWidth + 10) / (160 + 10));
-        if (cols > 6) cols = 6;
-        if (cols > cardCount) cols = cardCount;
-        
-        int rows = (int) Math.ceil((double) cardCount / cols);
-        
-        int hGap = 10;
-        if (cols > 1) {
-            int remainingRowSpace = availWidth - (cols * 160);
-            hGap = remainingRowSpace / (cols - 1);
-            if (hGap > 30) {
-                hGap = 30;
-            }
-        }
-        
-        cardsContainer.setLayout(new FlowLayout(FlowLayout.LEFT, hGap, 14));
-        
-        int totalGridWidth = cols * 160 + (cols - 1) * hGap;
-        int remainingSpace = width - totalGridWidth;
-        int sidePadding = Math.max(8, remainingSpace / 2);
-        
-        scrollContentWrapper.setBorder(new EmptyBorder(0, sidePadding, 0, sidePadding - 8));
-        
-        int calculatedHeight = rows * 275 + (rows + 1) * 14;
-        cardsContainer.setPreferredSize(new Dimension(totalGridWidth, calculatedHeight));
-        cardsContainer.revalidate();
-        cardsContainer.repaint();
+        // Delegate completely to our highly robust, generic layout engine!
+        // This ensures the grid and scrollbars are always 100% identical and stable.
+        recalculateContainerHeight();
     }
 
     private JComponent buildHero() {
@@ -410,14 +399,22 @@ public class DashboardPanel extends JPanel {
             private ImageIcon bgIcon = new java.io.File("banner_bg.gif").exists() ? new ImageIcon("banner_bg.gif") : null;
 
             @Override protected void paintComponent(Graphics g) {
+                // Call super first to let the component prepare and paint standard properties
+                super.paintComponent(g);
+
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
+                // Clip the painting to the rounded corners so the video/GIF doesn't bleed out
+                g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 22, 22));
+                
                 if (bgIcon != null) {
                     g2.drawImage(bgIcon.getImage(), 0, 0, getWidth(), getHeight(), this);
+                    // Beautiful horizontal gradient: solid/dark on the left for perfect text readability,
+                    // fading to highly transparent on the right to let the video shine clearly.
                     GradientPaint gp = new GradientPaint(
-                        0, 0, new Color(45, 17, 22, 180),
-                        getWidth(), getHeight(), new Color(16, 18, 23, 220)
+                        0, 0, new Color(26, 22, 20, 240), // Dark theme color (BG_2) with high opacity
+                        getWidth() * 0.7f, 0, new Color(26, 22, 20, 45) // Fades to very transparent on the right
                     );
                     g2.setPaint(gp);
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 22, 22);
@@ -427,7 +424,6 @@ public class DashboardPanel extends JPanel {
                     g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 22, 22);
                 }
                 g2.dispose();
-                super.paintComponent(g);
             }
         };
         banner.setLayout(new BorderLayout());
@@ -454,41 +450,153 @@ public class DashboardPanel extends JPanel {
         subtitle.setForeground(Theme.MUTED);
         subtitle.setFont(Theme.FONT_NORMAL);
         content.add(subtitle);
-        content.add(Box.createVerticalStrut(18));
-
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        actions.setOpaque(false);
-        RoundedButton book = new RoundedButton("Đặt vé ngay", Theme.RED, new Color(235, 48, 86), Color.WHITE, null);
-        book.setPreferredSize(new Dimension(120, 38));
-        RoundedButton more = new RoundedButton("Tìm hiểu thêm", new Color(33, 23, 20), new Color(48, 35, 29), Theme.GOLD, Theme.BORDER);
-        more.setPreferredSize(new Dimension(128, 38));
-        actions.add(book);
-        actions.add(more);
-        content.add(actions);
 
         banner.add(content, BorderLayout.WEST);
-        banner.add(buildHeroPosterShapes(), BorderLayout.EAST);
         hero.add(banner, BorderLayout.CENTER);
         return hero;
     }
+}
 
-    private JComponent buildHeroPosterShapes() {
-        JComponent shapes = new JComponent() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int w = getWidth();
-                int h = getHeight();
-                g2.setColor(new Color(54, 30, 37, 110));
-                g2.fillRoundRect(w - 190, 12, 120, h - 24, 12, 12);
-                g2.setColor(new Color(86, 29, 38, 130));
-                g2.fillRoundRect(w - 150, 2, 125, h - 10, 12, 12);
-                g2.setColor(new Color(111, 32, 43, 120));
-                g2.fillRoundRect(w - 118, 22, 110, h - 46, 12, 12);
-                g2.dispose();
-            }
-        };
-        shapes.setPreferredSize(new Dimension(330, 190));
-        return shapes;
+/**
+ * 100% VECTOR-DRAWN STATS: MOVIE ICON
+ */
+class StatMovieIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Theme.GOLD); // Unified gold color matching your reference image
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(x + 2, y + 2, 16, 16);
+        // Inner film reel holes
+        g2.fillOval(x + 5, y + 5, 3, 3);
+        g2.fillOval(x + 12, y + 5, 3, 3);
+        g2.fillOval(x + 5, y + 12, 3, 3);
+        g2.fillOval(x + 12, y + 12, 3, 3);
+        g2.fillOval(x + 8, y + 8, 4, 4);
+        g2.dispose();
     }
+    @Override public int getIconWidth() { return 20; }
+    @Override public int getIconHeight() { return 20; }
+}
+
+/**
+ * 100% VECTOR-DRAWN STATS: SCREENINGS ICON
+ */
+class StatScreeningIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Theme.GOLD); // Unified gold color matching your reference image
+        g2.setStroke(new BasicStroke(1.5f));
+        // Film strip fragment
+        g2.drawRoundRect(x + 2, y + 2, 16, 16, 2, 2);
+        g2.drawLine(x + 5, y + 2, x + 5, y + 18);
+        g2.drawLine(x + 15, y + 2, x + 15, y + 18);
+        g2.fillRect(x + 3, y + 4, 1, 1);
+        g2.fillRect(x + 3, y + 8, 1, 1);
+        g2.fillRect(x + 3, y + 12, 1, 1);
+        g2.fillRect(x + 16, y + 4, 1, 1);
+        g2.fillRect(x + 16, y + 8, 1, 1);
+        g2.fillRect(x + 16, y + 12, 1, 1);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 20; }
+    @Override public int getIconHeight() { return 20; }
+}
+
+/**
+ * 100% VECTOR-DRAWN STATS: UPCOMING SCREENINGS ICON
+ */
+class StatUpcomingIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Theme.GOLD); // Unified gold color matching your reference image
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(x + 2, y + 2, 16, 16);
+        // Clock hands indicating 3 o'clock
+        g2.drawLine(x + 10, y + 10, x + 10, y + 5);
+        g2.drawLine(x + 10, y + 10, x + 14, y + 10);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 20; }
+    @Override public int getIconHeight() { return 20; }
+}
+
+/**
+ * 100% VECTOR-DRAWN STATS: BOOKING ICON
+ */
+class StatBookingIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Theme.GOLD); // Unified gold color matching your reference image
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(x + 2, y + 2, 16, 16);
+        // Checkmark
+        g2.drawLine(x + 6, y + 10, x + 9, y + 13);
+        g2.drawLine(x + 9, y + 13, x + 14, y + 7);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 20; }
+    @Override public int getIconHeight() { return 20; }
+}
+
+/**
+ * 100% VECTOR-DRAWN STATS: TICKET ICON
+ */
+class StatTicketIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Theme.GOLD); // Unified gold color matching your reference image
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(x + 2, y + 4, 16, 12, 2, 2);
+        // Cutout notch circle effect using BG_2 as mask
+        g2.setColor(Theme.BG_2);
+        g2.fillOval(x - 2, y + 8, 6, 4);
+        g2.fillOval(x + 16, y + 8, 6, 4);
+        // Redraw cutout borders
+        g2.setColor(Theme.GOLD);
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawArc(x - 2, y + 8, 6, 4, 270, 180);
+        g2.drawArc(x + 16, y + 8, 6, 4, 90, 180);
+        // Dashed slot
+        g2.drawLine(x + 7, y + 5, x + 7, y + 15);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 20; }
+    @Override public int getIconHeight() { return 20; }
+}
+
+/**
+ * 100% VECTOR-DRAWN STATS: REVENUE ICON
+ */
+class StatRevenueIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Theme.GOLD); // Unified gold color matching your reference image
+        g2.setStroke(new BasicStroke(1.5f));
+        // Coin 1 (bottom)
+        g2.drawOval(x + 3, y + 12, 14, 5);
+        g2.drawLine(x + 3, y + 14, x + 3, y + 10);
+        g2.drawLine(x + 17, y + 14, x + 17, y + 10);
+        // Coin 2 (middle)
+        g2.drawOval(x + 3, y + 8, 14, 5);
+        g2.drawLine(x + 3, y + 10, x + 3, y + 6);
+        g2.drawLine(x + 17, y + 10, x + 17, y + 6);
+        // Coin 3 (top)
+        g2.drawOval(x + 3, y + 4, 14, 5);
+        g2.fillOval(x + 3, y + 4, 14, 5);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 20; }
+    @Override public int getIconHeight() { return 20; }
 }

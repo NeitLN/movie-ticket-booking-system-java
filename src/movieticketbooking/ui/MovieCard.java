@@ -14,7 +14,7 @@ import java.awt.*;
 public class MovieCard extends RoundedPanel {
     public MovieCard(Movie movie) {
         super(16, Theme.CARD, Theme.BORDER);
-        setPreferredSize(new Dimension(160, 275)); // Compact size optimized for 6-per-row with sidebar
+        setPreferredSize(new Dimension(160, 260)); // Compact size optimized for admin layout with multiline titles
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8)); // Thin margins to optimize space
 
@@ -34,7 +34,7 @@ public class MovieCard extends RoundedPanel {
         titleRow.setOpaque(false);
         titleRow.setAlignmentX(Component.LEFT_ALIGNMENT); // Align flush left
         
-        JLabel title = new JLabel(movie.getTitle());
+        JLabel title = new JLabel("<html>" + movie.getTitle() + "</html>");
         title.setForeground(Theme.CREAM);
         title.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Slightly smaller font for compact width
         
@@ -82,27 +82,6 @@ public class MovieCard extends RoundedPanel {
         meta.add(duration, BorderLayout.WEST);
         meta.add(score, BorderLayout.EAST);
         info.add(meta);
-        info.add(Box.createVerticalStrut(10));
-
-        // Row 4: Call-to-action buttons ("Đặt vé" and "Chi tiết")
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        buttons.setOpaque(false);
-        buttons.setAlignmentX(Component.LEFT_ALIGNMENT); // Align flush left
-        
-        // Buttons adjusted to 64px and 68px to fit perfectly within the 144px inner width limit
-        RoundedButton book = new RoundedButton("Đặt vé", Theme.RED, new Color(235, 48, 86), Color.WHITE, null);
-        book.setPreferredSize(new Dimension(64, 28));
-        book.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Compact font size
-        
-        RoundedButton detail = new RoundedButton("Chi tiết", new Color(30, 25, 22), new Color(47, 38, 30), Theme.GOLD, Theme.BORDER);
-        detail.setPreferredSize(new Dimension(68, 28));
-        detail.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Compact font size
-        
-        book.addActionListener(e -> JOptionPane.showMessageDialog(this, "Bạn bấm Đặt vé: " + movie.getTitle()));
-        detail.addActionListener(e -> JOptionPane.showMessageDialog(this, "Bạn bấm Chi tiết: " + movie.getTitle()));
-        buttons.add(book);
-        buttons.add(detail);
-        info.add(buttons);
 
         add(info, BorderLayout.CENTER);
     }

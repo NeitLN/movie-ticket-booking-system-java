@@ -80,6 +80,15 @@ public class MainFrame extends JFrame {
         RoundedButton btnRevenue = createNavButton("Revenue Reports");
         RoundedButton btnExit = createNavButton("Exit");
 
+        // Set high-fidelity custom vector icons
+        btnDashboard.setIcon(new HomeIcon());
+        btnMovies.setIcon(new FilmIcon());
+        btnScreenings.setIcon(new CalendarIcon());
+        btnBookings.setIcon(new TicketIcon());
+        btnHistory.setIcon(new HistoryIcon());
+        btnRevenue.setIcon(new RevenueIcon());
+        btnExit.setIcon(new ExitIcon());
+
         // Pile them vertically with elastic spacing
         navButtonsContainer.add(btnDashboard);
         navButtonsContainer.add(Box.createVerticalStrut(12));
@@ -219,6 +228,9 @@ public class MainFrame extends JFrame {
         btn.setPreferredSize(new Dimension(208, 38));
         btn.setMaximumSize(new Dimension(208, 38));
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setIconTextGap(12);
+        btn.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 16));
         return btn;
     }
 
@@ -229,13 +241,16 @@ public class MainFrame extends JFrame {
         // Reset old selection
         if (activeMenuButton != null) {
             activeMenuButton.setForeground(Theme.MUTED);
-            activeMenuButton.setBorder(null);
+            activeMenuButton.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 16));
         }
         
         // Highlight active selection
         activeMenuButton = button;
         activeMenuButton.setForeground(Theme.GOLD);
-        activeMenuButton.setBorder(BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.GOLD)); // gold left stripe
+        activeMenuButton.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 3, 0, 0, Theme.GOLD), // gold left stripe
+            BorderFactory.createEmptyBorder(0, 17, 0, 16) // stable padding (20px - 3px = 17px)
+        ));
         
         // Refresh dashboard metrics and movie cards upon returning to storefront Dashboard
         if ("Dashboard".equalsIgnoreCase(cardName)) {
@@ -338,4 +353,176 @@ public class MainFrame extends JFrame {
         panel.add(card);
         return panel;
     }
+}
+
+/**
+ * 100% VECTOR-DRAWN HOMEPAGE/DASHBOARD ICON
+ */
+class HomeIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(c.getForeground());
+        g2.setStroke(new BasicStroke(1.5f));
+        // Roof
+        g2.drawLine(x + 2, y + 7, x + 8, y + 2);
+        g2.drawLine(x + 8, y + 2, x + 14, y + 7);
+        // Base
+        g2.drawRect(x + 4, y + 7, 8, 7);
+        // Door
+        g2.fillRect(x + 7, y + 10, 2, 4);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
+}
+
+/**
+ * 100% VECTOR-DRAWN FILM STRIP / MOVIES ICON
+ */
+class FilmIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(c.getForeground());
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(x + 2, y + 2, 12, 12, 2, 2);
+        // Vertical frames
+        g2.drawLine(x + 5, y + 2, x + 5, y + 14);
+        g2.drawLine(x + 11, y + 2, x + 11, y + 14);
+        // Small perforations
+        g2.fillRect(x + 3, y + 4, 1, 1);
+        g2.fillRect(x + 3, y + 7, 1, 1);
+        g2.fillRect(x + 3, y + 10, 1, 1);
+        g2.fillRect(x + 12, y + 4, 1, 1);
+        g2.fillRect(x + 12, y + 7, 1, 1);
+        g2.fillRect(x + 12, y + 10, 1, 1);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
+}
+
+/**
+ * 100% VECTOR-DRAWN CALENDAR / SCREENINGS ICON
+ */
+class CalendarIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(c.getForeground());
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(x + 2, y + 3, 12, 11, 2, 2);
+        g2.drawLine(x + 2, y + 7, x + 14, y + 7);
+        // Binder loops
+        g2.drawLine(x + 5, y + 1, x + 5, y + 4);
+        g2.drawLine(x + 11, y + 1, x + 11, y + 4);
+        // Mini dots
+        g2.fillRect(x + 4, y + 9, 2, 2);
+        g2.fillRect(x + 7, y + 9, 2, 2);
+        g2.fillRect(x + 10, y + 9, 2, 2);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
+}
+
+/**
+ * 100% VECTOR-DRAWN TICKET ICON
+ */
+class TicketIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Color iconColor = c.getForeground();
+        g2.setColor(iconColor);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(x + 1, y + 3, 14, 10, 2, 2);
+        // Cutout circle effect: draw overlapping ovals with background color
+        g2.setColor(Theme.NAV);
+        g2.fillOval(x - 3, y + 6, 5, 4);
+        g2.fillOval(x + 14, y + 6, 5, 4);
+        // Redraw cutout borders
+        g2.setColor(iconColor);
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawArc(x - 3, y + 6, 5, 4, 270, 180);
+        g2.drawArc(x + 14, y + 6, 5, 4, 90, 180);
+        // Dash ticket slit line
+        g2.drawLine(x + 5, y + 4, x + 5, y + 12);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
+}
+
+/**
+ * 100% VECTOR-DRAWN HISTORY / CLOCK ICON
+ */
+class HistoryIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(c.getForeground());
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawArc(x + 2, y + 2, 12, 12, 45, 270); // clockwise clock circle
+        // Hands
+        g2.drawLine(x + 8, y + 8, x + 8, y + 5);
+        g2.drawLine(x + 8, y + 8, x + 11, y + 8);
+        // Arrowhead
+        g2.drawLine(x + 10, y + 1, x + 12, y + 3);
+        g2.drawLine(x + 10, y + 5, x + 12, y + 3);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
+}
+
+/**
+ * 100% VECTOR-DRAWN REVENUE / BAR CHART ICON
+ */
+class RevenueIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(c.getForeground());
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawLine(x + 2, y + 13, x + 14, y + 13); // Axis
+        g2.fillRect(x + 3, y + 9, 2, 4);
+        g2.fillRect(x + 7, y + 6, 2, 7);
+        g2.fillRect(x + 11, y + 3, 2, 10);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
+}
+
+/**
+ * 100% VECTOR-DRAWN LOGOUT / EXIT ICON
+ */
+class ExitIcon implements Icon {
+    @Override
+    public void paintIcon(Component c, Graphics g, int x, int y) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(c.getForeground());
+        g2.setStroke(new BasicStroke(1.5f));
+        // Door bracket
+        g2.drawLine(x + 9, y + 2, x + 3, y + 2);
+        g2.drawLine(x + 3, y + 2, x + 3, y + 14);
+        g2.drawLine(x + 3, y + 14, x + 9, y + 14);
+        // Shaft
+        g2.drawLine(x + 6, y + 8, x + 13, y + 8);
+        // Tip
+        g2.drawLine(x + 10, y + 5, x + 13, y + 8);
+        g2.drawLine(x + 10, y + 11, x + 13, y + 8);
+        g2.dispose();
+    }
+    @Override public int getIconWidth() { return 16; }
+    @Override public int getIconHeight() { return 16; }
 }
