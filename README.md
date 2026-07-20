@@ -65,7 +65,8 @@ Bộ test không cần JUnit. Khi kiểm thử, `data/screenings.txt` và `data/
 
 - Thêm, xem, cập nhật, xóa và tìm kiếm lịch chiếu.
 - Kiểm tra phim tồn tại, ngày giờ, giá vé và xung đột phòng chiếu.
-- Không cho xóa suất chiếu đã xuất hiện trong booking history.
+- Không cho sửa hoặc xóa suất chiếu đã xuất hiện trong booking history (kể cả booking đã hủy),
+  vì thông tin vé lịch sử phải giữ nguyên phim, ngày giờ, phòng và giá đã đặt.
 
 ### Seat Booking
 

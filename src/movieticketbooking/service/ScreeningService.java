@@ -227,6 +227,12 @@ public class ScreeningService {
             throw new ValidationException("Screening with ID " + updatedScreening.getScreeningId() + " not found.");
         }
 
+        if (bookingService != null && bookingService.hasBookingsForScreening(updatedScreening.getScreeningId())) {
+            throw new ValidationException(
+                "This screening cannot be edited because it has existing booking history."
+            );
+        }
+
         checkRoomConflict(updatedScreening, movie, updatedScreening.getScreeningId());
 
         Screening previousScreening = screenings.set(index, updatedScreening);

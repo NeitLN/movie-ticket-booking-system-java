@@ -50,15 +50,17 @@ public class BookingService {
     // -------------------------------------------------------------------------
 
     public void loadBookings() {
-        bookings.clear();
         List<String> lines = FileManager.readLines(FILE_PATH);
+        List<Booking> loadedBookings = new ArrayList<>();
         for (String line : lines) {
             try {
-                bookings.add(Booking.fromTxtLine(line));
+                loadedBookings.add(Booking.fromTxtLine(line));
             } catch (ValidationException e) {
                 System.err.println("Skipping malformed booking record: " + line + " — " + e.getMessage());
             }
         }
+        bookings.clear();
+        bookings.addAll(loadedBookings);
     }
 
     public void reload() {
@@ -206,7 +208,9 @@ public class BookingService {
 
         // 2. Customer info
         ValidationUtils.validateRequiredText(customerName, "Customer name");
+        ValidationUtils.validateTxtSafeField(customerName, "Customer name");
         ValidationUtils.validatePhone(phone);
+        ValidationUtils.validateTxtSafeField(phone, "Phone");
 
         // 3. At least one seat
         if (selectedSeatNumbers == null || selectedSeatNumbers.isEmpty()) {
@@ -301,7 +305,9 @@ public class BookingService {
             throw new ValidationException("Booking '" + bookingId + "' not found.");
         }
         ValidationUtils.validateRequiredText(newCustomerName, "Customer name");
+        ValidationUtils.validateTxtSafeField(newCustomerName, "Customer name");
         ValidationUtils.validatePhone(newPhone);
+        ValidationUtils.validateTxtSafeField(newPhone, "Phone");
 
         String oldName = booking.getCustomerName();
         String oldPhone = booking.getPhone();

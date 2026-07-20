@@ -23,14 +23,18 @@ public class Booking {
         this.phone = phone;
         this.seats = seats == null ? new ArrayList<>() : new ArrayList<>(seats);
         this.totalPrice = totalPrice;
-        this.status = normalizeStatus(status);
+        this.status = status;
     }
 
     public void validate() throws ValidationException {
         ValidationUtils.validateId(bookingId, "Booking ID");
+        ValidationUtils.validateTxtSafeField(bookingId, "Booking ID");
         ValidationUtils.validateId(screeningId, "Screening ID");
+        ValidationUtils.validateTxtSafeField(screeningId, "Screening ID");
         ValidationUtils.validateId(customerName, "Customer Name");
+        ValidationUtils.validateTxtSafeField(customerName, "Customer Name");
         ValidationUtils.validatePhone(phone);
+        ValidationUtils.validateTxtSafeField(phone, "Phone");
         if (seats == null || seats.isEmpty()) {
             throw new ValidationException("Booking must have at least one seat selected.");
         }
@@ -47,10 +51,21 @@ public class Booking {
             seenSeatNumbers.add(normalizedSeatNumber);
         }
         ValidationUtils.validateNonNegativePrice(totalPrice, "Total Price");
+        ValidationUtils.validateTxtSafeField(status, "Status");
         status = normalizeStatus(status);
     }
 
+    /**
+     * Re-validates before serializing so an invalid Booking (e.g. one whose free-text
+     * fields somehow bypassed the service-layer checks) can never be written to
+     * bookings.txt - it fails loudly here instead of silently corrupting the TXT record.
+     */
     public String toTxtLine() {
+        try {
+            validate();
+        } catch (ValidationException e) {
+            throw new IllegalStateException("Cannot serialize an invalid booking: " + e.getMessage(), e);
+        }
         List<String> seatNums = new ArrayList<>();
         for (Seat s : seats) {
             seatNums.add(s.getSeatNumber());
@@ -90,7 +105,7 @@ public class Booking {
                 }
             }
             double totalPrice = Double.parseDouble(tokens[5].trim());
-            String status = tokens.length == 7 ? tokens[6].trim() : DEFAULT_STATUS;
+            String status = tokens.length == 7 ? tokens[6] : DEFAULT_STATUS;
             Booking booking = new Booking(bookingId, screeningId, name, phone, seatList, totalPrice, status);
             booking.validate();
             return booking;
@@ -123,10 +138,10 @@ public class Booking {
     public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
 
     public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = normalizeStatus(status); }
+    public void setStatus(String status) { this.status = status; }
 
     private static String normalizeStatus(String status) {
-        return status == null || status.trim().isEmpty() ? DEFAULT_STATUS : status.trim();
+        return status == null || status.trim().isEmpty() ? DEFAULT_STATUS : status.trim().toUpperCase();
     }
 
     @Override

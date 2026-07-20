@@ -52,6 +52,7 @@ public class BookingHistoryPanel extends JPanel {
     };
     private DefaultTableModel tableModel;
     private JTable table;
+    private JLabel statusLabel;
     private List<Booking> displayedBookings; // parallel list; same order as table rows
 
     // -------------------------------------------------------------------------
@@ -103,6 +104,7 @@ public class BookingHistoryPanel extends JPanel {
 
         add(buildTopBar(), BorderLayout.NORTH);
         add(buildBody(), BorderLayout.CENTER);
+        add(buildStatusBar(), BorderLayout.SOUTH);
 
         refreshTable(bookingService.getAllBookings());
     }
@@ -362,6 +364,32 @@ public class BookingHistoryPanel extends JPanel {
         return detailScrollPane;
     }
 
+    /** Empty-state feedback bar, shown only when the table has no rows to display. */
+    private JComponent buildStatusBar() {
+        statusLabel = new JLabel(" ");
+        statusLabel.setForeground(Theme.MUTED);
+        statusLabel.setFont(Theme.FONT_SMALL);
+        statusLabel.setBorder(new EmptyBorder(8, 4, 0, 0));
+        statusLabel.setVisible(false);
+        return statusLabel;
+    }
+
+    /**
+     * Hides the label when the table has rows. When empty, distinguishes a genuinely
+     * empty source ("No bookings found.") from a search that matched nothing
+     * ("No bookings match the current search."). Never called from a failed reload
+     * (see refreshView()), so a read error is never shown as an ordinary empty state.
+     */
+    private void updateStatusLabel() {
+        if (!displayedBookings.isEmpty()) {
+            statusLabel.setVisible(false);
+            return;
+        }
+        boolean sourceIsEmpty = bookingService.getAllBookings().isEmpty();
+        statusLabel.setText(sourceIsEmpty ? "No bookings found." : "No bookings match the current search.");
+        statusLabel.setVisible(true);
+    }
+
     // -------------------------------------------------------------------------
     // Event handlers
     // -------------------------------------------------------------------------
@@ -489,6 +517,7 @@ public class BookingHistoryPanel extends JPanel {
                 b.getStatus()
             });
         }
+        updateStatusLabel();
     }
 
     /** Re-renders the table while keeping the same row selected. */

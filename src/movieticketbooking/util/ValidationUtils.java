@@ -63,4 +63,17 @@ public final class ValidationUtils {
             throw new ValidationException("Booking must have at least one seat selected.");
         }
     }
+
+    /**
+     * Rejects the pipe-delimited TXT record delimiter and line breaks. Any free-text
+     * field that gets joined into a "|"-separated TXT line (e.g. Booking's customerName,
+     * phone, status) must pass this check before the record is persisted - otherwise the
+     * character shifts every subsequent field on the line, or a literal newline splits one
+     * record into two unparseable physical lines, silently corrupting the source file.
+     */
+    public static void validateTxtSafeField(String value, String fieldName) throws ValidationException {
+        if (value != null && (value.indexOf('|') >= 0 || value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0)) {
+            throw new ValidationException(fieldName + " cannot contain | or line-break characters.");
+        }
+    }
 }
