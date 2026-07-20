@@ -18,6 +18,12 @@ public class Seat {
 
     public void validate() throws ValidationException {
         ValidationUtils.validateRequiredText(seatNumber, "Seat number");
+        seatNumber = seatNumber.trim().toUpperCase();
+        if (!seatNumber.matches("^[A-C][1-5]$")) {
+            throw new ValidationException(
+                "Invalid seat number '" + seatNumber + "'. Valid seats are A1-A5, B1-B5, and C1-C5."
+            );
+        }
     }
 
     public String getSeatNumber() { return seatNumber; }

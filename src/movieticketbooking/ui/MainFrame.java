@@ -1,5 +1,6 @@
 package movieticketbooking.ui;
 
+import movieticketbooking.service.BookingService;
 import movieticketbooking.service.MovieService;
 import movieticketbooking.service.ReportService;
 import movieticketbooking.service.ScreeningService;
@@ -15,8 +16,7 @@ import java.io.File;
  * This is the parent window frame of the application (MainFrame) utilizing a 
  * CardLayout content area on the right and an elegant sidebar navigation panel on the left.
  * Houses the Dashboard (storefront showcase), Movies management (JTable JScrollPane CRUD),
- * and stub containers for Screenings (Student 2), Bookings (Student 3),
- * Booking History (Student 3), and Revenue Report (Student 2).
+ * Screenings, seat booking, booking history, dashboard, and revenue-report panels.
  */
 public class MainFrame extends JFrame {
     private final CardLayout cardLayout;
@@ -25,6 +25,7 @@ public class MainFrame extends JFrame {
     private final MovieService movieService;
     private final ScreeningService screeningService;
     private final ReportService reportService;
+    private final BookingService bookingService;
 
     // Side navigation button indicators to highlight the active menu selection
     private RoundedButton activeMenuButton = null;
@@ -32,6 +33,8 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         movieService = new MovieService(); // Single shared data service loaded on startup
         screeningService = new ScreeningService(movieService); // Shared screening service (Phase 5)
+        bookingService = new BookingService(screeningService); // Phase 7 — booking CRUD service (Student 3)
+        screeningService.setBookingService(bookingService); // Prevent deleting screenings with confirmed bookings
         reportService = new ReportService(movieService, screeningService); // Shared read-only reporting service (Phase 6)
         
         setTitle("Bittersweet Cinemas - Movie Ticket Booking System");
@@ -106,8 +109,9 @@ public class MainFrame extends JFrame {
         MoviePanel moviesAdminView = new MoviePanel(movieService, dashboardView, screeningService);
 
         ScreeningPanel screeningsView = new ScreeningPanel(screeningService, movieService);
-        JPanel bookingsView = createPlaceholderPanel("Interactive Seat Selection Dialog", "Fulfills Phase 7 & 8 - GridLayout Interactive Seat Visualizer. Assigned to Student 3.");
-        JPanel historyView = createPlaceholderPanel("Booking Transaction History", "Fulfills Phase 8 - JTable Booking Records & Ticket Cancellation/Cancellation Seat Releasing. Assigned to Student 3.");
+        // Phase 7 & 8 — Student 3
+        SeatLayoutPanel bookingsView = new SeatLayoutPanel(bookingService, screeningService, movieService);
+        BookingHistoryPanel historyView = new BookingHistoryPanel(bookingService, screeningService, movieService);
         RevenueReportPanel revenueView = new RevenueReportPanel(reportService, movieService);
 
         // Stack them into CardLayout
@@ -258,6 +262,26 @@ public class MainFrame extends JFrame {
             for (Component c : contentPanel.getComponents()) {
                 if (c instanceof RevenueReportPanel) {
                     ((RevenueReportPanel) c).refreshReport();
+                    break;
+                }
+            }
+        }
+
+        // Refresh seat layout (screening list may have changed) — Phase 8 Student 3
+        if ("Bookings (Seat)".equalsIgnoreCase(cardName)) {
+            for (Component c : contentPanel.getComponents()) {
+                if (c instanceof SeatLayoutPanel) {
+                    ((SeatLayoutPanel) c).refreshView();
+                    break;
+                }
+            }
+        }
+
+        // Refresh booking history table upon navigation — Phase 8 Student 3
+        if ("Booking History".equalsIgnoreCase(cardName)) {
+            for (Component c : contentPanel.getComponents()) {
+                if (c instanceof BookingHistoryPanel) {
+                    ((BookingHistoryPanel) c).refreshView();
                     break;
                 }
             }

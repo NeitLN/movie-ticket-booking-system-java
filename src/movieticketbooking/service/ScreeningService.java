@@ -23,6 +23,7 @@ public class ScreeningService {
 
     private final List<Screening> screenings;
     private final MovieService movieService;
+    private BookingService bookingService;
     private boolean lastLoadHadRecords;
     private int lastLoadValidCount;
     private int lastLoadInvalidCount;
@@ -71,6 +72,18 @@ public class ScreeningService {
 
     public void reload() {
         loadScreenings();
+    }
+
+    /**
+     * Connects the booking service after both services have been constructed.
+     * The setter avoids a circular-constructor dependency while keeping the
+     * delete rule inside the business layer instead of only in the Swing UI.
+     */
+    public void setBookingService(BookingService bookingService) {
+        if (bookingService == null) {
+            throw new IllegalArgumentException("BookingService dependency cannot be null.");
+        }
+        this.bookingService = bookingService;
     }
 
     public void saveScreenings() {
@@ -226,6 +239,16 @@ public class ScreeningService {
     }
 
     public void deleteScreening(String screeningId) throws ValidationException {
+        if (screeningId == null || screeningId.trim().isEmpty()) {
+            throw new ValidationException("Screening ID cannot be empty.");
+        }
+        if (bookingService != null && bookingService.hasBookingsForScreening(screeningId)) {
+            throw new ValidationException(
+                "Cannot delete screening " + screeningId +
+                " because booking-history records reference it."
+            );
+        }
+
         int index = -1;
         for (int i = 0; i < screenings.size(); i++) {
             if (screenings.get(i).getScreeningId().equalsIgnoreCase(screeningId)) {

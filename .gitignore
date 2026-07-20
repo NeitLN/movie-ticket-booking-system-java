@@ -1,6 +1,10 @@
 out/
+test-out/
 *.class
 sources.txt
+testsources.txt
+.movie_sources_*.txt
+.movie_test_sources_*.txt
 temp-repo/
 .DS_Store
 *.log

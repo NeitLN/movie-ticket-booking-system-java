@@ -34,11 +34,17 @@ public class Booking {
         if (seats == null || seats.isEmpty()) {
             throw new ValidationException("Booking must have at least one seat selected.");
         }
+        List<String> seenSeatNumbers = new ArrayList<>();
         for (Seat seat : seats) {
             if (seat == null) {
                 throw new ValidationException("Booking seats cannot contain null elements.");
             }
             seat.validate();
+            String normalizedSeatNumber = seat.getSeatNumber();
+            if (seenSeatNumbers.contains(normalizedSeatNumber)) {
+                throw new ValidationException("Duplicate seat in booking: " + normalizedSeatNumber);
+            }
+            seenSeatNumbers.add(normalizedSeatNumber);
         }
         ValidationUtils.validateNonNegativePrice(totalPrice, "Total Price");
         status = normalizeStatus(status);
