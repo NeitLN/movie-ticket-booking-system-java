@@ -285,11 +285,16 @@ public class ReportService {
                 continue;
             }
 
+            if (filter.getScreeningId() != null
+                    && !b.getScreeningId().equalsIgnoreCase(filter.getScreeningId())) {
+                continue;
+            }
+
             Screening screening = resolveScreening(b);
 
             if (filter.getMovieId() != null) {
-                String movieId = screening != null ? screening.getMovieId() : null;
-                if (movieId == null || !movieId.equalsIgnoreCase(filter.getMovieId())) {
+                Movie movie = screening != null ? resolveMovie(screening) : null;
+                if (movie == null || !movie.getMovieId().equalsIgnoreCase(filter.getMovieId())) {
                     continue;
                 }
             }
@@ -390,30 +395,42 @@ public class ReportService {
         }
     }
 
-    /** Immutable report filter: optional movie, optional inclusive start/end screening-date bounds. */
+    /** Immutable report filter: optional movie/screening and optional inclusive screening-date bounds. */
     public static final class ReportFilter {
         private final String movieId;
+        private final String screeningId;
         private final LocalDate startDate;
         private final LocalDate endDate;
 
-        private ReportFilter(String movieId, LocalDate startDate, LocalDate endDate) {
+        private ReportFilter(String movieId, String screeningId, LocalDate startDate, LocalDate endDate) {
             this.movieId = movieId;
+            this.screeningId = screeningId;
             this.startDate = startDate;
             this.endDate = endDate;
         }
 
         public static ReportFilter all() {
-            return new ReportFilter(null, null, null);
+            return new ReportFilter(null, null, null, null);
         }
 
         public static ReportFilter of(String movieId, LocalDate startDate, LocalDate endDate) throws ValidationException {
+            return of(movieId, null, startDate, endDate);
+        }
+
+        public static ReportFilter of(String movieId, String screeningId,
+                                      LocalDate startDate, LocalDate endDate) throws ValidationException {
             if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
                 throw new ValidationException("Start date must not be after end date.");
             }
-            return new ReportFilter(movieId, startDate, endDate);
+            return new ReportFilter(normalizeOptionalId(movieId), normalizeOptionalId(screeningId), startDate, endDate);
+        }
+
+        private static String normalizeOptionalId(String value) {
+            return value == null || value.trim().isEmpty() ? null : value.trim();
         }
 
         public String getMovieId() { return movieId; }
+        public String getScreeningId() { return screeningId; }
         public LocalDate getStartDate() { return startDate; }
         public LocalDate getEndDate() { return endDate; }
     }

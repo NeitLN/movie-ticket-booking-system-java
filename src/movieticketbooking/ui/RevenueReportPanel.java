@@ -2,8 +2,10 @@ package movieticketbooking.ui;
 
 import movieticketbooking.exception.ValidationException;
 import movieticketbooking.model.Movie;
+import movieticketbooking.model.Screening;
 import movieticketbooking.service.MovieService;
 import movieticketbooking.service.ReportService;
+import movieticketbooking.service.ScreeningService;
 import movieticketbooking.util.FormatUtils;
 
 import javax.swing.*;
@@ -12,6 +14,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 /**
@@ -24,8 +27,11 @@ import java.util.Date;
  * ReportService; this panel only renders what the service returns.
  */
 public class RevenueReportPanel extends JPanel {
+    private static final DateTimeFormatter SCREENING_LABEL_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
     private final ReportService reportService;
     private final MovieService movieService;
+    private final ScreeningService screeningService;
 
     private final JLabel grossRevenueValue;
     private final JLabel confirmedBookingsValue;
@@ -33,6 +39,7 @@ public class RevenueReportPanel extends JPanel {
     private final JLabel averageBookingValue;
 
     private final JComboBox<ScreeningPanel.MovieOption> movieFilterCombo;
+    private final JComboBox<ScreeningOption> screeningFilterCombo;
     private final JCheckBox useStartDate;
     private final JCheckBox useEndDate;
     private final JSpinner startDateSpinner;
@@ -43,10 +50,16 @@ public class RevenueReportPanel extends JPanel {
     private final JLabel statusLabel;
     private final JLabel unresolvedLabel;
     private final JLabel errorLabel;
+    private boolean updatingFilterChoices;
 
-    public RevenueReportPanel(ReportService reportService, MovieService movieService) {
+    public RevenueReportPanel(ReportService reportService, MovieService movieService,
+                              ScreeningService screeningService) {
+        if (reportService == null || movieService == null || screeningService == null) {
+            throw new IllegalArgumentException("Revenue report services cannot be null.");
+        }
         this.reportService = reportService;
         this.movieService = movieService;
+        this.screeningService = screeningService;
 
         setLayout(new BorderLayout());
         setBackground(Theme.BG);
@@ -94,6 +107,13 @@ public class RevenueReportPanel extends JPanel {
         movieFilterCombo.setForeground(Theme.CREAM);
         movieFilterCombo.setPreferredSize(new Dimension(200, 28));
         filterBar.add(movieFilterCombo);
+
+        filterBar.add(createFormLabel("Screening:"));
+        screeningFilterCombo = new JComboBox<>();
+        screeningFilterCombo.setBackground(Theme.BG_2);
+        screeningFilterCombo.setForeground(Theme.CREAM);
+        screeningFilterCombo.setPreferredSize(new Dimension(370, 28));
+        filterBar.add(screeningFilterCombo);
 
         filterBar.add(createFormLabel("Screening date from:"));
         useStartDate = new JCheckBox();
@@ -182,11 +202,17 @@ public class RevenueReportPanel extends JPanel {
         // --- Event wiring ---
         useStartDate.addItemListener(e -> startDateSpinner.setEnabled(useStartDate.isSelected()));
         useEndDate.addItemListener(e -> endDateSpinner.setEnabled(useEndDate.isSelected()));
+        movieFilterCombo.addActionListener(e -> {
+            if (!updatingFilterChoices) {
+                populateScreeningFilterCombo(null);
+            }
+        });
         btnApply.addActionListener(e -> applyFilters());
         btnReset.addActionListener(e -> resetFilters());
         btnRefresh.addActionListener(e -> refreshReport());
 
         populateMovieFilterCombo();
+        populateScreeningFilterCombo(null);
         updateErrorLabel();
         applyFilters();
     }
@@ -198,7 +224,9 @@ public class RevenueReportPanel extends JPanel {
         if (reportService.isLastLoadFailed()) {
             return; // preserve the last valid table/cards rather than overwriting with a false empty/zero state
         }
+        String previousScreeningId = getSelectedScreeningId();
         populateMovieFilterCombo();
+        populateScreeningFilterCombo(previousScreeningId);
         applyFilters();
     }
 
@@ -214,28 +242,84 @@ public class RevenueReportPanel extends JPanel {
         ScreeningPanel.MovieOption previous = (ScreeningPanel.MovieOption) movieFilterCombo.getSelectedItem();
         String previousMovieId = previous == null ? null : previous.movieId;
 
-        movieFilterCombo.removeAllItems();
-        movieFilterCombo.addItem(ScreeningPanel.MovieOption.allMovies());
-        int restoreIndex = 0;
-        int index = 1;
-        for (Movie m : movieService.getAllMovies()) {
-            movieFilterCombo.addItem(new ScreeningPanel.MovieOption(m.getMovieId(), m.getTitle(), false));
-            if (previousMovieId != null && previousMovieId.equalsIgnoreCase(m.getMovieId())) {
-                restoreIndex = index;
+        updatingFilterChoices = true;
+        try {
+            movieFilterCombo.removeAllItems();
+            movieFilterCombo.addItem(ScreeningPanel.MovieOption.allMovies());
+            int restoreIndex = 0;
+            int index = 1;
+            for (Movie m : movieService.getAllMovies()) {
+                movieFilterCombo.addItem(new ScreeningPanel.MovieOption(m.getMovieId(), m.getTitle(), false));
+                if (previousMovieId != null && previousMovieId.equalsIgnoreCase(m.getMovieId())) {
+                    restoreIndex = index;
+                }
+                index++;
             }
-            index++;
+            movieFilterCombo.setSelectedIndex(restoreIndex);
+        } finally {
+            updatingFilterChoices = false;
         }
-        movieFilterCombo.setSelectedIndex(restoreIndex);
+    }
+
+    private void populateScreeningFilterCombo(String preferredScreeningId) {
+        String previousScreeningId = preferredScreeningId != null
+            ? preferredScreeningId : getSelectedScreeningId();
+        ScreeningPanel.MovieOption selectedMovie =
+            (ScreeningPanel.MovieOption) movieFilterCombo.getSelectedItem();
+        String movieId = selectedMovie == null ? null : selectedMovie.movieId;
+
+        updatingFilterChoices = true;
+        try {
+            screeningFilterCombo.removeAllItems();
+            screeningFilterCombo.addItem(ScreeningOption.allScreenings());
+            int restoreIndex = 0;
+            int index = 1;
+            for (Screening screening : screeningService.getAllScreenings()) {
+                if (movieId != null && !movieId.equalsIgnoreCase(screening.getMovieId())) {
+                    continue;
+                }
+                ScreeningOption option = new ScreeningOption(
+                    screening.getScreeningId(),
+                    resolveMovieTitle(screening.getMovieId()),
+                    screening,
+                    false
+                );
+                screeningFilterCombo.addItem(option);
+                if (previousScreeningId != null
+                        && previousScreeningId.equalsIgnoreCase(screening.getScreeningId())) {
+                    restoreIndex = index;
+                }
+                index++;
+            }
+            screeningFilterCombo.setSelectedIndex(restoreIndex);
+        } finally {
+            updatingFilterChoices = false;
+        }
+    }
+
+    private String resolveMovieTitle(String movieId) {
+        for (Movie movie : movieService.getAllMovies()) {
+            if (movie.getMovieId().equalsIgnoreCase(movieId)) {
+                return movie.getTitle();
+            }
+        }
+        return "Missing movie: " + movieId;
+    }
+
+    private String getSelectedScreeningId() {
+        ScreeningOption selected = (ScreeningOption) screeningFilterCombo.getSelectedItem();
+        return selected == null ? null : selected.screeningId;
     }
 
     private void applyFilters() {
         ScreeningPanel.MovieOption selected = (ScreeningPanel.MovieOption) movieFilterCombo.getSelectedItem();
         String movieId = (selected == null) ? null : selected.movieId;
+        String screeningId = getSelectedScreeningId();
         LocalDate start = useStartDate.isSelected() ? toLocalDate((Date) startDateSpinner.getValue()) : null;
         LocalDate end = useEndDate.isSelected() ? toLocalDate((Date) endDateSpinner.getValue()) : null;
 
         try {
-            ReportService.ReportFilter filter = ReportService.ReportFilter.of(movieId, start, end);
+            ReportService.ReportFilter filter = ReportService.ReportFilter.of(movieId, screeningId, start, end);
             ReportService.ReportData data = reportService.getReportData(filter);
             renderReportData(data);
         } catch (ValidationException ex) {
@@ -245,6 +329,7 @@ public class RevenueReportPanel extends JPanel {
 
     private void resetFilters() {
         movieFilterCombo.setSelectedIndex(0);
+        screeningFilterCombo.setSelectedIndex(0);
         useStartDate.setSelected(false);
         useEndDate.setSelected(false);
         startDateSpinner.setValue(toDate(LocalDate.now()));
@@ -328,5 +413,28 @@ public class RevenueReportPanel extends JPanel {
 
     private static LocalDate toLocalDate(Date date) {
         return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private static final class ScreeningOption {
+        private final String screeningId;
+        private final String label;
+
+        private ScreeningOption(String screeningId, String movieTitle, Screening screening, boolean all) {
+            this.screeningId = screeningId;
+            this.label = all
+                ? "All Screenings"
+                : screeningId + " — " + movieTitle + " — "
+                    + screening.getStartDateTime().format(SCREENING_LABEL_FORMAT)
+                    + " — " + screening.getRoom();
+        }
+
+        private static ScreeningOption allScreenings() {
+            return new ScreeningOption(null, null, null, true);
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 }

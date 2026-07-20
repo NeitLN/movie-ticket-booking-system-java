@@ -112,7 +112,7 @@ public class MainFrame extends JFrame {
         // Phase 7 & 8 — Student 3
         SeatLayoutPanel bookingsView = new SeatLayoutPanel(bookingService, screeningService, movieService);
         BookingHistoryPanel historyView = new BookingHistoryPanel(bookingService, screeningService, movieService);
-        RevenueReportPanel revenueView = new RevenueReportPanel(reportService, movieService);
+        RevenueReportPanel revenueView = new RevenueReportPanel(reportService, movieService, screeningService);
 
         // Stack them into CardLayout
         contentPanel.add(dashboardView, "Dashboard");

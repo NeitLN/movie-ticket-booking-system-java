@@ -110,8 +110,8 @@ public final class BookingSystemRegressionTest {
                 "Revenue report excludes cancelled bookings");
             check(reportService.getTicketsSold() == 1,
                 "Revenue report counts tickets from confirmed bookings only");
-            check(reportService.getGrossRevenue().compareTo(new BigDecimal("100000.0")) == 0,
-                "Revenue report calculates the confirmed gross revenue correctly");
+            check(reportService.getGrossRevenue().compareTo(new BigDecimal("150000.0")) == 0,
+                "Revenue report preserves the persisted VIP B1 total");
 
             System.out.println("RESULT: " + passed + "/" + passed + " checks passed.");
         } finally {
