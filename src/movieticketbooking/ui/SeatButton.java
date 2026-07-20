@@ -44,6 +44,9 @@ public class SeatButton extends JButton {
     private static final Color COLOR_SELECTED_BORDER = Theme.GOLD;
     private static final Color COLOR_BOOKED    = new Color(160, 20, 50);   // dark red fill
     private static final Color COLOR_BOOKED_BORDER = Theme.RED;
+    private static final Color COLOR_AVAILABLE_VIP = new Color(74, 20, 140);   // dark purple fill
+    private static final Color COLOR_AVAILABLE_VIP_BORDER = new Color(156, 39, 176);
+
     private static final Color COLOR_HOVER_OVERLAY = new Color(255, 255, 255, 30);
 
     // -------------------------------------------------------------------------
@@ -125,15 +128,16 @@ public class SeatButton extends JButton {
     }
 
     private void updateToolTip() {
+        String type = seatNumber.trim().toUpperCase().startsWith("B") ? "VIP" : "Standard";
         switch (state) {
             case BOOKED:
-                setToolTipText("Seat " + seatNumber + " is already booked and cannot be selected.");
+                setToolTipText("Seat " + seatNumber + " (" + type + ") is already booked and cannot be selected.");
                 break;
             case SELECTED:
-                setToolTipText("Seat " + seatNumber + " is selected. Click to deselect it.");
+                setToolTipText("Seat " + seatNumber + " (" + type + ") is selected. Click to deselect it.");
                 break;
             default:
-                setToolTipText("Seat " + seatNumber + " is available. Click to select it.");
+                setToolTipText("Seat " + seatNumber + " (" + type + ") is available. Click to select it.");
                 break;
         }
     }
@@ -158,8 +162,13 @@ public class SeatButton extends JButton {
                 border = COLOR_SELECTED_BORDER;
                 break;
             default: // AVAILABLE
-                fill = COLOR_AVAILABLE;
-                border = COLOR_AVAILABLE_BORDER;
+                if (seatNumber.trim().toUpperCase().startsWith("B")) {
+                    fill = COLOR_AVAILABLE_VIP;
+                    border = COLOR_AVAILABLE_VIP_BORDER;
+                } else {
+                    fill = COLOR_AVAILABLE;
+                    border = COLOR_AVAILABLE_BORDER;
+                }
                 break;
         }
 

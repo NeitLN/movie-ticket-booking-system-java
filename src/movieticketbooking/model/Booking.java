@@ -101,7 +101,7 @@ public class Booking {
             if (!seatsPart.isEmpty()) {
                 String[] seatNums = seatsPart.split(",");
                 for (String sn : seatNums) {
-                    seatList.add(new Seat(sn.trim(), true));
+                    seatList.add(Seat.create(sn.trim(), true));
                 }
             }
             double totalPrice = Double.parseDouble(tokens[5].trim());

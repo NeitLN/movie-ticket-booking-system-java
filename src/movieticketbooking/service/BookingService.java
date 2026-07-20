@@ -239,12 +239,14 @@ public class BookingService {
             }
         }
 
-        // 6. Build seat objects and calculate total price
+        // 6. Build seat objects and calculate total price polymorphically
         List<Seat> seats = new ArrayList<>();
+        double totalPrice = 0;
         for (String sn : deduped) {
-            seats.add(new Seat(sn, true));
+            Seat seat = Seat.create(sn, true);
+            seats.add(seat);
+            totalPrice += seat.calculatePrice(screening.getBasePrice());
         }
-        double totalPrice = deduped.size() * screening.getBasePrice();
 
         // 7. Generate unique booking ID
         String bookingId = generateNextBookingId();

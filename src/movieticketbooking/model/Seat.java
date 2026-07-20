@@ -16,6 +16,21 @@ public class Seat {
         this(seatNumber, false);
     }
 
+    public double calculatePrice(double basePrice) {
+        return basePrice;
+    }
+
+    public static Seat create(String seatNumber) {
+        return create(seatNumber, false);
+    }
+
+    public static Seat create(String seatNumber, boolean booked) {
+        if (seatNumber != null && seatNumber.trim().toUpperCase().startsWith("B")) {
+            return new VipSeat(seatNumber, booked);
+        }
+        return new StandardSeat(seatNumber, booked);
+    }
+
     public void validate() throws ValidationException {
         ValidationUtils.validateRequiredText(seatNumber, "Seat number");
         seatNumber = seatNumber.trim().toUpperCase();

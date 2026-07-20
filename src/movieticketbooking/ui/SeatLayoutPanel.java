@@ -4,6 +4,7 @@ import movieticketbooking.exception.ValidationException;
 import movieticketbooking.model.Booking;
 import movieticketbooking.model.Movie;
 import movieticketbooking.model.Screening;
+import movieticketbooking.model.Seat;
 import movieticketbooking.service.BookingService;
 import movieticketbooking.service.MovieService;
 import movieticketbooking.service.ScreeningService;
@@ -212,7 +213,10 @@ public class SeatLayoutPanel extends JPanel {
         JPanel legend = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
         legend.setOpaque(false);
         legend.add(legendDot(new Color(76, 175, 80)));
-        legend.add(legendText("Available"));
+        legend.add(legendText("Standard"));
+        legend.add(Box.createHorizontalStrut(4));
+        legend.add(legendDot(new Color(156, 39, 176)));
+        legend.add(legendText("VIP"));
         legend.add(Box.createHorizontalStrut(4));
         legend.add(legendDot(Theme.GOLD));
         legend.add(legendText("Selected"));
@@ -412,7 +416,10 @@ public class SeatLayoutPanel extends JPanel {
 
         ScreeningItem item = (ScreeningItem) screeningCombo.getSelectedItem();
         if (item != null && item.screening != null && !selected.isEmpty()) {
-            double total = selected.size() * item.screening.getBasePrice();
+            double total = 0;
+            for (String sn : selected) {
+                total += Seat.create(sn).calculatePrice(item.screening.getBasePrice());
+            }
             lblTotalPrice.setText(String.format("Total: %,.0f VND", total));
         } else {
             lblTotalPrice.setText("Total: 0 VND");
