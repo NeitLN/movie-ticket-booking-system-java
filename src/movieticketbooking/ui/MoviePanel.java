@@ -7,6 +7,8 @@ import movieticketbooking.service.ScreeningService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.UncheckedIOException;
@@ -37,7 +39,14 @@ public class MoviePanel extends JPanel {
     private final JTextField scoreField;
     private final JTextField posterField;
     private final JTextField searchField;
-    private final JComboBox<String> sortCombo;
+    private final JComboBox<String> genreFilterCombo;
+    private final JComboBox<String> ratingFilterCombo;
+    private final JComboBox<MovieService.MovieSortOption> sortCombo;
+    private final RoundedButton resetFiltersButton;
+    private final RoundedButton refreshButton;
+    private final JLabel statusLabel;
+    private String selectedMovieId;
+    private boolean rebuildingFilters;
 
     public MoviePanel(MovieService movieService, DashboardPanel dashboardPanel, ScreeningService screeningService) {
         this.movieService = movieService;
@@ -195,28 +204,56 @@ public class MoviePanel extends JPanel {
         tablePanel.setOpaque(false);
 
         // Top Filter Bar
-        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel filterBar = new JPanel(new GridLayout(2, 1, 0, 6));
         filterBar.setOpaque(false);
         filterBar.setBorder(new EmptyBorder(0, 0, 10, 0));
 
-        filterBar.add(createFormLabel("Search:"));
+        JPanel searchFilterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        searchFilterRow.setOpaque(false);
+        JPanel sortActionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        sortActionRow.setOpaque(false);
+
+        searchFilterRow.add(createFormLabel("Search:"));
         searchField = new JTextField();
         searchField.setBackground(Theme.BG_2);
         searchField.setForeground(Theme.CREAM);
         searchField.setBorder(BorderFactory.createLineBorder(Theme.BORDER));
-        searchField.setPreferredSize(new Dimension(160, 28));
+        searchField.setPreferredSize(new Dimension(130, 28));
         searchField.setCaretColor(Theme.GOLD);
-        filterBar.add(searchField);
+        searchFilterRow.add(searchField);
 
         RoundedButton btnSearch = new RoundedButton("Search", Theme.NAV, Theme.TOP_BAR, Theme.GOLD, Theme.BORDER);
         btnSearch.setPreferredSize(new Dimension(86, 28));
-        filterBar.add(btnSearch);
+        searchFilterRow.add(btnSearch);
 
-        filterBar.add(createFormLabel("Sort by:"));
-        sortCombo = new JComboBox<>(new String[]{"None", "Name (A-Z)", "Name (Z-A)", "Duration (Short-Long)", "Duration (Long-Short)", "Genre (A-Z)"});
+        searchFilterRow.add(createFormLabel("Genre:"));
+        genreFilterCombo = new JComboBox<>(new String[]{"All Genres"});
+        genreFilterCombo.setBackground(Theme.BG_2);
+        genreFilterCombo.setForeground(Theme.CREAM);
+        searchFilterRow.add(genreFilterCombo);
+
+        searchFilterRow.add(createFormLabel("Rating:"));
+        ratingFilterCombo = new JComboBox<>(new String[]{"All Ratings"});
+        ratingFilterCombo.setBackground(Theme.BG_2);
+        ratingFilterCombo.setForeground(Theme.CREAM);
+        searchFilterRow.add(ratingFilterCombo);
+
+        sortActionRow.add(createFormLabel("Sort:"));
+        sortCombo = new JComboBox<>(MovieService.MovieSortOption.values());
         sortCombo.setBackground(Theme.BG_2);
         sortCombo.setForeground(Theme.CREAM);
-        filterBar.add(sortCombo);
+        sortActionRow.add(sortCombo);
+
+        resetFiltersButton = new RoundedButton("Reset Filters", Theme.NAV, Theme.TOP_BAR, Theme.MUTED, Theme.BORDER);
+        resetFiltersButton.setPreferredSize(new Dimension(104, 28));
+        sortActionRow.add(resetFiltersButton);
+
+        refreshButton = new RoundedButton("Refresh", Theme.NAV, Theme.TOP_BAR, Theme.GOLD, Theme.BORDER);
+        refreshButton.setPreferredSize(new Dimension(82, 28));
+        sortActionRow.add(refreshButton);
+
+        filterBar.add(searchFilterRow);
+        filterBar.add(sortActionRow);
 
         tablePanel.add(filterBar, BorderLayout.NORTH);
 
@@ -245,15 +282,26 @@ public class MoviePanel extends JPanel {
         scrollPane.getViewport().setBackground(Theme.BG_2);
         tablePanel.add(scrollPane, BorderLayout.CENTER);
 
+        statusLabel = new JLabel();
+        statusLabel.setForeground(Theme.MUTED);
+        statusLabel.setFont(Theme.FONT_NORMAL);
+        statusLabel.setBorder(new EmptyBorder(8, 4, 0, 4));
+        statusLabel.setVisible(false);
+        tablePanel.add(statusLabel, BorderLayout.SOUTH);
+
         mainSplit.add(tablePanel, gbc);
         add(mainSplit, BorderLayout.CENTER);
 
         // --- REGISTER ACTION LISTENERS & EVENTS ---
         
         movieTable.getSelectionModel().addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
             int selectedRow = movieTable.getSelectedRow();
             if (selectedRow >= 0) {
-                idField.setText(tableModel.getValueAt(selectedRow, 0).toString());
+                selectedMovieId = tableModel.getValueAt(selectedRow, 0).toString();
+                idField.setText(selectedMovieId);
                 titleField.setText(tableModel.getValueAt(selectedRow, 1).toString());
                 genreField.setText(tableModel.getValueAt(selectedRow, 2).toString());
                 durationField.setText(tableModel.getValueAt(selectedRow, 3).toString());
@@ -279,9 +327,7 @@ public class MoviePanel extends JPanel {
                 movieService.addMovie(movie);
                 
                 JOptionPane.showMessageDialog(this, "Movie successfully added: " + title, "Success", JOptionPane.INFORMATION_MESSAGE);
-                clearInputs();
-                refreshTable(movieService.getAllMovies());
-                dashboardPanel.refreshMovieCards();
+                refreshAfterSuccessfulCrud();
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Duration and score fields must contain valid numbers.", "Input Error", JOptionPane.ERROR_MESSAGE);
             } catch (ValidationException ex) {
@@ -292,8 +338,8 @@ public class MoviePanel extends JPanel {
         });
 
         btnUpdate.addActionListener(e -> {
-            String id = idField.getText().trim();
-            if (id.isEmpty()) {
+            String id = selectedMovieId;
+            if (id == null || id.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please select a movie from the table to update.", "Selection Required", JOptionPane.WARNING_MESSAGE);
                 return;
             }
@@ -311,9 +357,7 @@ public class MoviePanel extends JPanel {
                 movieService.updateMovie(movie);
                 
                 JOptionPane.showMessageDialog(this, "Movie successfully updated: " + title, "Success", JOptionPane.INFORMATION_MESSAGE);
-                clearInputs();
-                refreshTable(movieService.getAllMovies());
-                dashboardPanel.refreshMovieCards();
+                refreshAfterSuccessfulCrud();
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Duration and score fields must contain valid numbers.", "Input Error", JOptionPane.ERROR_MESSAGE);
             } catch (ValidationException ex) {
@@ -324,8 +368,8 @@ public class MoviePanel extends JPanel {
         });
 
         btnDelete.addActionListener(e -> {
-            String id = idField.getText().trim();
-            if (id.isEmpty()) {
+            String id = selectedMovieId;
+            if (id == null || id.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please select a movie from the table to delete.", "Selection Required", JOptionPane.WARNING_MESSAGE);
                 return;
             }
@@ -343,9 +387,7 @@ public class MoviePanel extends JPanel {
                 try {
                     movieService.deleteMovie(id);
                     JOptionPane.showMessageDialog(this, "Movie successfully deleted.", "Success", JOptionPane.INFORMATION_MESSAGE);
-                    clearInputs();
-                    refreshTable(movieService.getAllMovies());
-                    dashboardPanel.refreshMovieCards();
+                    refreshAfterSuccessfulCrud();
                 } catch (ValidationException ex) {
                     JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
                 } catch (UncheckedIOException ex) {
@@ -357,38 +399,30 @@ public class MoviePanel extends JPanel {
         btnClear.addActionListener(e -> clearInputs());
 
         btnSearch.addActionListener(e -> {
-            String query = searchField.getText().trim();
-            List<Movie> results = movieService.searchMovies(query);
-            refreshTable(results);
+            applyCurrentCriteria();
         });
 
-        sortCombo.addActionListener(e -> {
-            int selectedIndex = sortCombo.getSelectedIndex();
-            List<Movie> sorted;
-            switch (selectedIndex) {
-                case 1:
-                    sorted = movieService.getMoviesSortedByName(true);
-                    break;
-                case 2:
-                    sorted = movieService.getMoviesSortedByName(false);
-                    break;
-                case 3:
-                    sorted = movieService.getMoviesSortedByDuration(true);
-                    break;
-                case 4:
-                    sorted = movieService.getMoviesSortedByDuration(false);
-                    break;
-                case 5:
-                    sorted = movieService.getMoviesSortedByGenre(true);
-                    break;
-                default:
-                    sorted = movieService.getAllMovies();
-                    break;
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { applyIfReady(); }
+            @Override public void removeUpdate(DocumentEvent e) { applyIfReady(); }
+            @Override public void changedUpdate(DocumentEvent e) { applyIfReady(); }
+
+            private void applyIfReady() {
+                if (!rebuildingFilters) {
+                    applyCurrentCriteria();
+                }
             }
-            refreshTable(sorted);
         });
 
-        refreshTable(movieService.getAllMovies());
+        genreFilterCombo.addActionListener(e -> applyIfFiltersReady());
+        ratingFilterCombo.addActionListener(e -> applyIfFiltersReady());
+        sortCombo.addActionListener(e -> applyIfFiltersReady());
+        resetFiltersButton.addActionListener(e -> resetFilters());
+        refreshButton.addActionListener(e -> refreshView());
+
+        rebuildFilterOptions(false);
+        clearInputs();
+        applyCurrentCriteria();
     }
 
     private JLabel createFormLabel(String text) {
@@ -400,7 +434,8 @@ public class MoviePanel extends JPanel {
 
     private void clearInputs() {
         movieTable.clearSelection();
-        idField.setText("");
+        selectedMovieId = null;
+        idField.setText(movieService.generateNextMovieId());
         titleField.setText("");
         genreField.setText("");
         durationField.setText("");
@@ -428,6 +463,9 @@ public class MoviePanel extends JPanel {
     }
 
     private void refreshTable(List<Movie> list) {
+        movieTable.clearSelection();
+        selectedMovieId = null;
+        idField.setText(movieService.generateNextMovieId());
         tableModel.setRowCount(0);
         for (Movie m : list) {
             tableModel.addRow(new Object[]{
@@ -439,6 +477,99 @@ public class MoviePanel extends JPanel {
                 m.getScore(),
                 m.getPosterPath()
             });
+        }
+        if (list.isEmpty()) {
+            statusLabel.setText("No movies match the current filters.");
+            statusLabel.setVisible(true);
+        } else {
+            statusLabel.setText("");
+            statusLabel.setVisible(false);
+        }
+    }
+
+    private void applyIfFiltersReady() {
+        if (!rebuildingFilters) {
+            applyCurrentCriteria();
+        }
+    }
+
+    private void applyCurrentCriteria() {
+        String genre = genreFilterCombo.getSelectedIndex() <= 0
+            ? null : String.valueOf(genreFilterCombo.getSelectedItem());
+        String rating = ratingFilterCombo.getSelectedIndex() <= 0
+            ? null : String.valueOf(ratingFilterCombo.getSelectedItem());
+        MovieService.MovieSortOption sortOption =
+            (MovieService.MovieSortOption) sortCombo.getSelectedItem();
+        refreshTable(movieService.searchMovies(searchField.getText(), genre, rating, sortOption));
+    }
+
+    private void resetFilters() {
+        rebuildingFilters = true;
+        try {
+            searchField.setText("");
+            genreFilterCombo.setSelectedIndex(0);
+            ratingFilterCombo.setSelectedIndex(0);
+            sortCombo.setSelectedItem(MovieService.MovieSortOption.ID_ASC);
+        } finally {
+            rebuildingFilters = false;
+        }
+        applyCurrentCriteria();
+    }
+
+    private void rebuildFilterOptions(boolean preserveSelections) {
+        String previousGenre = preserveSelections && genreFilterCombo.getSelectedIndex() > 0
+            ? String.valueOf(genreFilterCombo.getSelectedItem()) : null;
+        String previousRating = preserveSelections && ratingFilterCombo.getSelectedIndex() > 0
+            ? String.valueOf(ratingFilterCombo.getSelectedItem()) : null;
+
+        rebuildingFilters = true;
+        try {
+            genreFilterCombo.removeAllItems();
+            genreFilterCombo.addItem("All Genres");
+            for (String genre : movieService.getGenreOptions()) {
+                genreFilterCombo.addItem(genre);
+            }
+            ratingFilterCombo.removeAllItems();
+            ratingFilterCombo.addItem("All Ratings");
+            for (String rating : movieService.getAgeRatingOptions()) {
+                ratingFilterCombo.addItem(rating);
+            }
+            selectIfPresent(genreFilterCombo, previousGenre);
+            selectIfPresent(ratingFilterCombo, previousRating);
+        } finally {
+            rebuildingFilters = false;
+        }
+    }
+
+    private void selectIfPresent(JComboBox<String> combo, String requestedValue) {
+        if (requestedValue != null) {
+            for (int i = 1; i < combo.getItemCount(); i++) {
+                if (requestedValue.equalsIgnoreCase(combo.getItemAt(i))) {
+                    combo.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+        combo.setSelectedIndex(0);
+    }
+
+    private void refreshAfterSuccessfulCrud() {
+        rebuildFilterOptions(true);
+        clearInputs();
+        applyCurrentCriteria();
+        dashboardPanel.refreshMovieCards();
+    }
+
+    /** Reloads the current TXT data while preserving valid active criteria. */
+    public void refreshView() {
+        try {
+            movieService.loadMoviesFromFile();
+            rebuildFilterOptions(true);
+            clearInputs();
+            applyCurrentCriteria();
+        } catch (UncheckedIOException ex) {
+            statusLabel.setText("Could not read movie data. Existing in-memory results were kept.");
+            statusLabel.setVisible(true);
         }
     }
 }

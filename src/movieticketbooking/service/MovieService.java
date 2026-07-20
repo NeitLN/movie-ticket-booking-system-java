@@ -6,8 +6,13 @@ import movieticketbooking.util.FileManager;
 import movieticketbooking.util.IdGenerator;
 
 import java.io.UncheckedIOException;
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class MovieService {
     private static final String FILE_PATH = "data/movies.txt";
@@ -15,6 +20,27 @@ public class MovieService {
     private boolean lastLoadHadRecords;
     private int lastLoadValidCount;
     private int lastLoadInvalidCount;
+
+    public enum MovieSortOption {
+        ID_ASC("ID (Ascending)"),
+        TITLE_ASC("Title (A-Z)"),
+        TITLE_DESC("Title (Z-A)"),
+        DURATION_ASC("Duration (Shortest First)"),
+        DURATION_DESC("Duration (Longest First)"),
+        SCORE_DESC("Score (Highest First)"),
+        SCORE_ASC("Score (Lowest First)");
+
+        private final String displayName;
+
+        MovieSortOption(String displayName) {
+            this.displayName = displayName;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
+    }
 
     public MovieService() {
         this.movies = new ArrayList<>();
@@ -39,23 +65,28 @@ public class MovieService {
     }
 
     public void loadMoviesFromFile() {
-        movies.clear();
         List<String> lines = FileManager.readLines(FILE_PATH);
-        lastLoadHadRecords = !lines.isEmpty();
-        lastLoadValidCount = 0;
-        lastLoadInvalidCount = 0;
+        List<Movie> loadedMovies = new ArrayList<>();
+        int validCount = 0;
+        int invalidCount = 0;
 
         for (String line : lines) {
             try {
                 Movie movie = Movie.fromTxtLine(line);
                 movie.validate();
-                movies.add(movie);
-                lastLoadValidCount++;
+                loadedMovies.add(movie);
+                validCount++;
             } catch (ValidationException e) {
-                lastLoadInvalidCount++;
+                invalidCount++;
                 System.err.println("Skipping malformed movie record: " + line + " - " + e.getMessage());
             }
         }
+
+        movies.clear();
+        movies.addAll(loadedMovies);
+        lastLoadHadRecords = !lines.isEmpty();
+        lastLoadValidCount = validCount;
+        lastLoadInvalidCount = invalidCount;
 
         if (lastLoadHadRecords && lastLoadValidCount == 0 && lastLoadInvalidCount > 0) {
             System.err.println(
@@ -153,44 +184,183 @@ public class MovieService {
     }
 
     public List<Movie> searchMovies(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return getAllMovies();
-        }
-        String lowerQuery = query.toLowerCase().trim();
+        return searchMovies(query, null, null, null);
+    }
+
+    /**
+     * Searches, filters and sorts the in-memory movie snapshot without changing it.
+     */
+    public List<Movie> searchMovies(String query, String genre, String ageRating,
+                                    MovieSortOption sortOption) {
+        String normalizedQuery = normalizeSearchText(query);
+        String normalizedGenre = normalizeFilter(genre, "All Genres");
+        String normalizedRating = normalizeFilter(ageRating, "All Ratings");
+        String[] queryTokens = normalizedQuery.isEmpty()
+            ? new String[0]
+            : normalizedQuery.split(" ");
+
         List<Movie> results = new ArrayList<>();
         for (Movie m : movies) {
-            if (m.getTitle().toLowerCase().contains(lowerQuery) ||
-                m.getGenre().toLowerCase().contains(lowerQuery)) {
+            if (!normalizedGenre.isEmpty() &&
+                    !normalizeSearchText(m.getGenre()).equals(normalizedGenre)) {
+                continue;
+            }
+            if (!normalizedRating.isEmpty() &&
+                    !normalizeSearchText(m.getAgeRating()).equals(normalizedRating)) {
+                continue;
+            }
+
+            String searchableText = String.join(" ",
+                normalizeSearchText(m.getMovieId()),
+                normalizeSearchText(m.getTitle()),
+                normalizeSearchText(m.getGenre()),
+                normalizeSearchText(m.getAgeRating())
+            );
+            boolean matchesAllTokens = true;
+            for (String token : queryTokens) {
+                if (!searchableText.contains(token)) {
+                    matchesAllTokens = false;
+                    break;
+                }
+            }
+            if (matchesAllTokens) {
                 results.add(m);
             }
         }
+        results.sort(comparatorFor(sortOption));
         return results;
     }
 
+    public List<String> getGenreOptions() {
+        return getDistinctSortedOptions(true);
+    }
+
+    public List<String> getAgeRatingOptions() {
+        return getDistinctSortedOptions(false);
+    }
+
     public List<Movie> getMoviesSortedByName(boolean ascending) {
-        List<Movie> sorted = new ArrayList<>(movies);
-        sorted.sort((m1, m2) -> {
-            int comp = m1.getTitle().compareToIgnoreCase(m2.getTitle());
-            return ascending ? comp : -comp;
-        });
-        return sorted;
+        return searchMovies(null, null, null,
+            ascending ? MovieSortOption.TITLE_ASC : MovieSortOption.TITLE_DESC);
     }
 
     public List<Movie> getMoviesSortedByDuration(boolean ascending) {
-        List<Movie> sorted = new ArrayList<>(movies);
-        sorted.sort((m1, m2) -> {
-            int comp = Integer.compare(m1.getDuration(), m2.getDuration());
-            return ascending ? comp : -comp;
-        });
-        return sorted;
+        return searchMovies(null, null, null,
+            ascending ? MovieSortOption.DURATION_ASC : MovieSortOption.DURATION_DESC);
     }
 
     public List<Movie> getMoviesSortedByGenre(boolean ascending) {
         List<Movie> sorted = new ArrayList<>(movies);
         sorted.sort((m1, m2) -> {
-            int comp = m1.getGenre().compareToIgnoreCase(m2.getGenre());
-            return ascending ? comp : -comp;
+            int comp = normalizeSearchText(m1.getGenre()).compareTo(normalizeSearchText(m2.getGenre()));
+            if (comp != 0) {
+                return ascending ? comp : -comp;
+            }
+            return compareMovieIds(m1, m2);
         });
         return sorted;
+    }
+
+    private List<String> getDistinctSortedOptions(boolean genres) {
+        Map<String, String> distinct = new LinkedHashMap<>();
+        for (Movie movie : movies) {
+            String value = genres ? movie.getGenre() : movie.getAgeRating();
+            String normalized = normalizeSearchText(value);
+            if (!normalized.isEmpty()) {
+                distinct.putIfAbsent(normalized, value.trim());
+            }
+        }
+        List<String> options = new ArrayList<>(distinct.values());
+        options.sort((left, right) -> {
+            int comparison = normalizeSearchText(left).compareTo(normalizeSearchText(right));
+            return comparison != 0 ? comparison : left.compareToIgnoreCase(right);
+        });
+        return options;
+    }
+
+    private static String normalizeFilter(String filter, String allLabel) {
+        String normalized = normalizeSearchText(filter);
+        return normalized.equals(normalizeSearchText(allLabel)) ? "" : normalized;
+    }
+
+    private static String normalizeSearchText(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .replace('đ', 'd')
+            .replace('Đ', 'D')
+            .toLowerCase(Locale.ROOT)
+            .trim();
+        return normalized.replaceAll("\\s+", " ");
+    }
+
+    private static Comparator<Movie> comparatorFor(MovieSortOption requestedOption) {
+        MovieSortOption option = requestedOption == null ? MovieSortOption.ID_ASC : requestedOption;
+        Comparator<Movie> idComparator = MovieService::compareMovieIds;
+        switch (option) {
+            case TITLE_ASC:
+                return Comparator.comparing(
+                    (Movie movie) -> normalizeSearchText(movie.getTitle())
+                ).thenComparing(idComparator);
+            case TITLE_DESC:
+                return (left, right) -> {
+                    int comparison = normalizeSearchText(right.getTitle())
+                        .compareTo(normalizeSearchText(left.getTitle()));
+                    return comparison != 0 ? comparison : compareMovieIds(left, right);
+                };
+            case DURATION_ASC:
+                return Comparator.comparingInt(Movie::getDuration).thenComparing(idComparator);
+            case DURATION_DESC:
+                return (left, right) -> {
+                    int comparison = Integer.compare(right.getDuration(), left.getDuration());
+                    return comparison != 0 ? comparison : compareMovieIds(left, right);
+                };
+            case SCORE_DESC:
+                return (left, right) -> {
+                    int comparison = Double.compare(right.getScore(), left.getScore());
+                    return comparison != 0 ? comparison : compareMovieIds(left, right);
+                };
+            case SCORE_ASC:
+                return Comparator.comparingDouble(Movie::getScore).thenComparing(idComparator);
+            case ID_ASC:
+            default:
+                return idComparator;
+        }
+    }
+
+    private static int compareMovieIds(Movie left, Movie right) {
+        Integer leftNumber = validMovieNumber(left.getMovieId());
+        Integer rightNumber = validMovieNumber(right.getMovieId());
+        if (leftNumber != null && rightNumber != null) {
+            int numericComparison = Integer.compare(leftNumber, rightNumber);
+            if (numericComparison != 0) {
+                return numericComparison;
+            }
+        } else if (leftNumber != null) {
+            return -1;
+        } else if (rightNumber != null) {
+            return 1;
+        }
+        return normalizeSearchText(left.getMovieId()).compareTo(normalizeSearchText(right.getMovieId()));
+    }
+
+    private static Integer validMovieNumber(String id) {
+        if (id == null || !id.startsWith("MOV") || id.length() < 6) {
+            return null;
+        }
+        String suffix = id.substring(3);
+        for (int i = 0; i < suffix.length(); i++) {
+            char character = suffix.charAt(i);
+            if (character < '0' || character > '9') {
+                return null;
+            }
+        }
+        try {
+            return Integer.valueOf(suffix);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

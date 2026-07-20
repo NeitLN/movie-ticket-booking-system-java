@@ -257,6 +257,16 @@ public class MainFrame extends JFrame {
             }
         }
 
+        // Reload movie data and preserve still-valid E5 filters on navigation.
+        if ("Movies (Admin)".equalsIgnoreCase(cardName)) {
+            for (Component c : contentPanel.getComponents()) {
+                if (c instanceof MoviePanel) {
+                    ((MoviePanel) c).refreshView();
+                    break;
+                }
+            }
+        }
+
         // Reload booking/report data and refresh the table upon returning to Revenue Reports
         if ("Revenue Reports".equalsIgnoreCase(cardName)) {
             for (Component c : contentPanel.getComponents()) {
