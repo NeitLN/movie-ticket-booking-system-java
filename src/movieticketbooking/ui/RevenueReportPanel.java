@@ -4,19 +4,15 @@ import movieticketbooking.exception.ValidationException;
 import movieticketbooking.model.Movie;
 import movieticketbooking.service.MovieService;
 import movieticketbooking.service.ReportService;
+import movieticketbooking.util.FormatUtils;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.Locale;
 
 /**
  * REVENUE REPORTS PANEL (Phase 6)
@@ -265,14 +261,14 @@ public class RevenueReportPanel extends JPanel {
                 row.getScreeningDate() != null ? row.getScreeningDate().toString() : "N/A",
                 row.getConfirmedBookings(),
                 row.getTicketsSold(),
-                formatVnd(row.getGrossRevenue())
+                FormatUtils.formatVnd(row.getGrossRevenue())
             });
         }
 
-        grossRevenueValue.setText(formatVnd(data.getGrossRevenue()));
+        grossRevenueValue.setText(FormatUtils.formatVnd(data.getGrossRevenue()));
         confirmedBookingsValue.setText(String.valueOf(data.getConfirmedBookingCount()));
         ticketsSoldValue.setText(String.valueOf(data.getTicketsSold()));
-        averageBookingValue.setText(formatVnd(data.getAverageBookingValue()));
+        averageBookingValue.setText(FormatUtils.formatVnd(data.getAverageBookingValue()));
 
         int rowCount = data.getRows().size();
         if (rowCount == 0) {
@@ -324,18 +320,6 @@ public class RevenueReportPanel extends JPanel {
 
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-    }
-
-    /**
-     * Student-appropriate VND display format: whole-number grouped digits with a currency symbol.
-     * Formats the BigDecimal directly (DecimalFormat has a dedicated BigDecimal code path) so
-     * arbitrarily large finite totals never get narrowed through long/double and can never throw
-     * ArithmeticException/overflow - only the displayed text is rounded (HALF_UP), not the underlying value.
-     */
-    static String formatVnd(BigDecimal amount) {
-        DecimalFormat format = new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(Locale.US));
-        format.setRoundingMode(RoundingMode.HALF_UP);
-        return format.format(amount) + " ₫";
     }
 
     private static Date toDate(LocalDate date) {

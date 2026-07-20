@@ -8,11 +8,14 @@ import movieticketbooking.model.Seat;
 import movieticketbooking.service.BookingService;
 import movieticketbooking.service.MovieService;
 import movieticketbooking.service.ScreeningService;
+import movieticketbooking.service.InvoiceService;
+import movieticketbooking.util.FormatUtils;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +51,7 @@ public class SeatLayoutPanel extends JPanel {
     private final BookingService bookingService;
     private final ScreeningService screeningService;
     private final MovieService movieService;
+    private final InvoiceService invoiceService;
 
     // -------------------------------------------------------------------------
     // UI components
@@ -83,6 +87,7 @@ public class SeatLayoutPanel extends JPanel {
         this.bookingService = bookingService;
         this.screeningService = screeningService;
         this.movieService = movieService;
+        this.invoiceService = new InvoiceService(screeningService, movieService);
 
         setBackground(Theme.BG);
         setLayout(new BorderLayout());
@@ -334,7 +339,7 @@ public class SeatLayoutPanel extends JPanel {
         summaryCard.add(lblSelectedCount);
         summaryCard.add(Box.createVerticalStrut(6));
 
-        lblTotalPrice = infoLabel("Total: 0 VND");
+        lblTotalPrice = infoLabel("Total: 0 ₫");
         lblTotalPrice.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTotalPrice.setForeground(Theme.GOLD);
         summaryCard.add(lblTotalPrice);
@@ -390,7 +395,7 @@ public class SeatLayoutPanel extends JPanel {
         lblRoom.setText(s.getRoom());
         lblDate.setText(s.getScreeningDate().format(DATE_FMT));
         lblTime.setText(s.getStartTime().format(TIME_FMT));
-        lblBasePrice.setText(String.format("%,.0f VND / seat", s.getBasePrice()));
+        lblBasePrice.setText(FormatUtils.formatVnd(s.getBasePrice()) + " / seat");
 
         // Reset seats and mark already-booked ones
         List<String> bookedSeats = bookingService.getBookedSeatNumbers(s.getScreeningId());
@@ -420,9 +425,9 @@ public class SeatLayoutPanel extends JPanel {
             for (String sn : selected) {
                 total += Seat.create(sn).calculatePrice(item.screening.getBasePrice());
             }
-            lblTotalPrice.setText(String.format("Total: %,.0f VND", total));
+            lblTotalPrice.setText("Total: " + FormatUtils.formatVnd(total));
         } else {
-            lblTotalPrice.setText("Total: 0 VND");
+            lblTotalPrice.setText("Total: 0 ₫");
         }
     }
 
@@ -471,12 +476,20 @@ public class SeatLayoutPanel extends JPanel {
             txtPhone.setText("");
             refreshSummary();
 
-            JOptionPane.showMessageDialog(this,
-                "<html><b>Booking confirmed!</b><br>" +
-                "Booking ID: " + booking.getBookingId() + "<br>" +
-                "Seats: " + String.join(", ", seats) + "<br>" +
-                String.format("Total: %,.0f VND", booking.getTotalPrice()) + "</html>",
-                "Booking Successful", JOptionPane.INFORMATION_MESSAGE);
+            try {
+                Path invoicePath = invoiceService.exportInvoice(booking);
+                JOptionPane.showMessageDialog(this,
+                    "<html><b>Booking confirmed!</b><br>" +
+                    "Booking ID: " + booking.getBookingId() + "<br>" +
+                    "Seats: " + String.join(", ", seats) + "<br>" +
+                    "Total: " + FormatUtils.formatVnd(booking.getTotalPrice()) + "<br><br>" +
+                    "Invoice exported to:<br>" + invoicePath.toString() + "</html>",
+                    "Booking Successful", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this,
+                    "Booking " + booking.getBookingId() + " was saved successfully, but the invoice could not be exported: " + ex.getMessage(),
+                    "Invoice Export Error", JOptionPane.WARNING_MESSAGE);
+            }
 
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this,

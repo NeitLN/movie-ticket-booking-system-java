@@ -8,6 +8,8 @@ import movieticketbooking.model.Seat;
 import movieticketbooking.service.BookingService;
 import movieticketbooking.service.MovieService;
 import movieticketbooking.service.ScreeningService;
+import movieticketbooking.service.InvoiceService;
+import movieticketbooking.util.FormatUtils;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -42,6 +44,7 @@ public class BookingHistoryPanel extends JPanel {
     private final BookingService bookingService;
     private final ScreeningService screeningService;
     private final MovieService movieService;
+    private final InvoiceService invoiceService;
 
     // -------------------------------------------------------------------------
     // Table
@@ -79,6 +82,7 @@ public class BookingHistoryPanel extends JPanel {
     private JTextField txtEditPhone;
     private JButton btnUpdate;
     private JButton btnCancel;
+    private JButton btnExport;
     private JLabel lblEditState;
 
     private Booking selectedBooking; // the booking currently shown in detail panel
@@ -96,6 +100,7 @@ public class BookingHistoryPanel extends JPanel {
         this.bookingService = bookingService;
         this.screeningService = screeningService;
         this.movieService = movieService;
+        this.invoiceService = new InvoiceService(screeningService, movieService);
         this.displayedBookings = new ArrayList<>();
 
         setBackground(Theme.BG);
@@ -352,6 +357,16 @@ public class BookingHistoryPanel extends JPanel {
         btnCancel.addActionListener(e -> onCancelBooking());
         detailPanel.add(btnCancel);
 
+        detailPanel.add(Box.createVerticalStrut(10));
+
+        btnExport = new RoundedButton("Export Invoice", Theme.CARD_2, Theme.CARD, Theme.CREAM, Theme.BORDER);
+        btnExport.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        btnExport.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnExport.setEnabled(false);
+        btnExport.setToolTipText("Export a text invoice for the selected booking.");
+        btnExport.addActionListener(e -> onExportInvoice());
+        detailPanel.add(btnExport);
+
         detailPanel.add(Box.createVerticalGlue());
 
         detailScrollPane = new JScrollPane(detailPanel);
@@ -497,6 +512,25 @@ public class BookingHistoryPanel extends JPanel {
         }
     }
 
+    private void onExportInvoice() {
+        if (selectedBooking == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please select a booking to export.",
+                "Export Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            java.nio.file.Path path = invoiceService.exportInvoice(selectedBooking);
+            JOptionPane.showMessageDialog(this,
+                "Invoice successfully exported to:\n" + path.toString(),
+                "Export Successful", JOptionPane.INFORMATION_MESSAGE);
+        } catch (ValidationException | UncheckedIOException ex) {
+            JOptionPane.showMessageDialog(this,
+                "Unable to export invoice:\n" + ex.getMessage(),
+                "Export Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Table helpers
     // -------------------------------------------------------------------------
@@ -560,7 +594,7 @@ public class BookingHistoryPanel extends JPanel {
         List<String> seatNums = new ArrayList<>();
         for (Seat s : b.getSeats()) seatNums.add(s.getSeatNumber());
         lblDetailSeats.setText(String.join(", ", seatNums));
-        lblDetailTotal.setText(String.format("%,.0f VND", b.getTotalPrice()));
+        lblDetailTotal.setText(FormatUtils.formatVnd(b.getTotalPrice()));
 
         boolean cancelled = "CANCELLED".equalsIgnoreCase(b.getStatus());
         lblDetailStatus.setText(b.getStatus());
@@ -573,6 +607,7 @@ public class BookingHistoryPanel extends JPanel {
         // but lock the editor and both actions so the panel cannot look active.
         setContactEditorEnabled(!cancelled);
         btnCancel.setEnabled(!cancelled);
+        btnExport.setEnabled(true);
         lblEditState.setText(cancelled
             ? "Cancelled booking - contact information is read-only."
             : " ");
@@ -595,6 +630,7 @@ public class BookingHistoryPanel extends JPanel {
         txtEditPhone.setText("");
         setContactEditorEnabled(false);
         btnCancel.setEnabled(false);
+        btnExport.setEnabled(false);
         lblEditState.setText(" ");
         lblEditState.setVisible(false);
     }
