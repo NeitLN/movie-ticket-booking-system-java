@@ -2,6 +2,12 @@ package movieticketbooking.ui;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Component;
+import javax.swing.JComboBox;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JList;
+import javax.swing.JComponent;
+import javax.swing.BorderFactory;
 
 public final class Theme {
     private Theme() {}
@@ -26,4 +32,40 @@ public final class Theme {
     public static final Font FONT_TITLE = new Font("Georgia", Font.BOLD, 42);
     public static final Font FONT_LOGO = new Font("Georgia", Font.BOLD, 16);
     public static final Font FONT_HEADING = new Font("Segoe UI", Font.BOLD, 18);
+
+    /**
+     * Unified, platform-independent combobox styler.
+     * Sets the main closed box to WHITE with BLACK text for perfect readability,
+     * while keeping the opened dropdown popup list dark to match the cinematic theme.
+     */
+    public static void styleCombo(JComboBox<?> combo) {
+        combo.setFont(FONT_NORMAL);
+        combo.setForeground(Color.BLACK); // Deep black text for perfect readability inside the white box
+        combo.setBackground(Color.WHITE); // Solid clean white box background
+        combo.setBorder(BorderFactory.createLineBorder(BORDER));
+        
+        combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                // Dropdown popup list container stays dark
+                list.setBackground(Theme.BG_2);
+                list.setSelectionBackground(Theme.RED);
+                list.setSelectionForeground(Color.WHITE);
+                
+                if (isSelected) {
+                    c.setBackground(Theme.RED);
+                    c.setForeground(Color.WHITE);
+                } else {
+                    c.setBackground(Theme.BG_2);
+                    c.setForeground(Theme.CREAM);
+                }
+                if (c instanceof JComponent) {
+                    ((JComponent) c).setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+                }
+                return c;
+            }
+        });
+    }
 }

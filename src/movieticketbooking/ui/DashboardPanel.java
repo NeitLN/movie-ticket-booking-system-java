@@ -40,6 +40,7 @@ public class DashboardPanel extends JPanel {
     private final JTextField searchField;
     private final JScrollPane scrollPane;
     private final JPanel scrollContentWrapper;
+    private int lastCalculatedWidth = -1; // Caches viewport width to prevent infinite layout loops
 
     private JLabel totalMoviesValue;
     private JLabel totalScreeningsValue;

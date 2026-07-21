@@ -167,7 +167,7 @@ public class SeatLayoutPanel extends JPanel {
         pickerCard.add(Box.createVerticalStrut(8));
 
         screeningCombo = new JComboBox<>();
-        styleCombo(screeningCombo);
+        Theme.styleCombo(screeningCombo);
         screeningCombo.setMaximumSize(new Dimension(Short.MAX_VALUE, 34));
         screeningCombo.addActionListener(e -> onScreeningSelected());
         pickerCard.add(screeningCombo);
@@ -621,25 +621,6 @@ public class SeatLayoutPanel extends JPanel {
         f.setMaximumSize(new Dimension(Short.MAX_VALUE, 34));
         f.setToolTipText(placeholder);
         return f;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void styleCombo(JComboBox<?> combo) {
-        combo.setFont(Theme.FONT_NORMAL);
-        combo.setForeground(Theme.CREAM);
-        combo.setBackground(Theme.BG);
-        combo.setBorder(BorderFactory.createLineBorder(Theme.BORDER));
-        combo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value,
-                    int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                setBackground(isSelected ? Theme.CARD_2 : Theme.CARD);
-                setForeground(Theme.CREAM);
-                setBorder(new EmptyBorder(4, 8, 4, 8));
-                return this;
-            }
-        });
     }
 
     // -------------------------------------------------------------------------

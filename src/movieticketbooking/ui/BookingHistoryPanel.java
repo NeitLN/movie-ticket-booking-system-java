@@ -141,9 +141,7 @@ public class BookingHistoryPanel extends JPanel {
         searchRow.setOpaque(false);
 
         comboSearchField = new JComboBox<>(new String[]{"All Fields", "Booking ID", "Customer Name", "Phone"});
-        comboSearchField.setFont(Theme.FONT_NORMAL);
-        comboSearchField.setForeground(Theme.CREAM);
-        comboSearchField.setBackground(Theme.CARD);
+        Theme.styleCombo(comboSearchField);
         comboSearchField.setPreferredSize(new Dimension(140, 32));
 
         txtSearch = new JTextField();
@@ -226,7 +224,7 @@ public class BookingHistoryPanel extends JPanel {
         table.setIntercellSpacing(new Dimension(8, 4));
         table.getTableHeader().setFont(Theme.FONT_BOLD);
         table.getTableHeader().setBackground(Theme.TOP_BAR);
-        table.getTableHeader().setForeground(Theme.MUTED);
+        table.getTableHeader().setForeground(Color.BLACK);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
 

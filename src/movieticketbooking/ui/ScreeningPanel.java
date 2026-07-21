@@ -70,8 +70,7 @@ public class ScreeningPanel extends JPanel {
 
         controlsBar.add(createFormLabel("Movie:"));
         movieFilterCombo = new JComboBox<>();
-        movieFilterCombo.setBackground(Theme.BG_2);
-        movieFilterCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(movieFilterCombo);
         movieFilterCombo.setPreferredSize(new Dimension(220, 28));
         controlsBar.add(movieFilterCombo);
 
@@ -117,7 +116,7 @@ public class ScreeningPanel extends JPanel {
         screeningTable.setSelectionForeground(Color.WHITE);
         screeningTable.setFont(Theme.FONT_NORMAL);
         screeningTable.getTableHeader().setBackground(Theme.TOP_BAR);
-        screeningTable.getTableHeader().setForeground(Theme.CREAM);
+        screeningTable.getTableHeader().setForeground(Color.BLACK);
         screeningTable.getTableHeader().setFont(Theme.FONT_BOLD);
         screeningTable.setRowHeight(24);
 
@@ -365,6 +364,7 @@ public class ScreeningPanel extends JPanel {
         for (Movie m : movieService.getAllMovies()) {
             movieCombo.addItem(new MovieOption(m.getMovieId(), m.getTitle(), false));
         }
+        Theme.styleCombo(movieCombo);
         gbc.gridx = 1;
         form.add(movieCombo, gbc);
 

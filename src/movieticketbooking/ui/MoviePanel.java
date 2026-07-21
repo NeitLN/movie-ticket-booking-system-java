@@ -139,8 +139,7 @@ public class MoviePanel extends JPanel {
         fGbc.gridx = 0; fGbc.gridy = 4;
         formPanel.add(createFormLabel("Age Rating * :"), fGbc);
         ageRatingCombo = new JComboBox<>(new String[]{"P", "T13", "T16", "T18"});
-        ageRatingCombo.setBackground(Theme.BG);
-        ageRatingCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(ageRatingCombo);
         fGbc.gridx = 1;
         formPanel.add(ageRatingCombo, fGbc);
 
@@ -228,20 +227,17 @@ public class MoviePanel extends JPanel {
 
         searchFilterRow.add(createFormLabel("Genre:"));
         genreFilterCombo = new JComboBox<>(new String[]{"All Genres"});
-        genreFilterCombo.setBackground(Theme.BG_2);
-        genreFilterCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(genreFilterCombo);
         searchFilterRow.add(genreFilterCombo);
 
         searchFilterRow.add(createFormLabel("Rating:"));
         ratingFilterCombo = new JComboBox<>(new String[]{"All Ratings"});
-        ratingFilterCombo.setBackground(Theme.BG_2);
-        ratingFilterCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(ratingFilterCombo);
         searchFilterRow.add(ratingFilterCombo);
 
         sortActionRow.add(createFormLabel("Sort:"));
         sortCombo = new JComboBox<>(MovieService.MovieSortOption.values());
-        sortCombo.setBackground(Theme.BG_2);
-        sortCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(sortCombo);
         sortActionRow.add(sortCombo);
 
         resetFiltersButton = new RoundedButton("Reset Filters", Theme.NAV, Theme.TOP_BAR, Theme.MUTED, Theme.BORDER);
@@ -273,7 +269,7 @@ public class MoviePanel extends JPanel {
         movieTable.setSelectionForeground(Color.WHITE);
         movieTable.setFont(Theme.FONT_NORMAL);
         movieTable.getTableHeader().setBackground(Theme.TOP_BAR);
-        movieTable.getTableHeader().setForeground(Theme.CREAM);
+        movieTable.getTableHeader().setForeground(Color.BLACK);
         movieTable.getTableHeader().setFont(Theme.FONT_BOLD);
         movieTable.setRowHeight(24);
 

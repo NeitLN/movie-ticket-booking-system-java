@@ -107,15 +107,13 @@ public class RevenueReportPanel extends JPanel {
 
         filterBar.add(createFormLabel("Movie:"));
         movieFilterCombo = new JComboBox<>();
-        movieFilterCombo.setBackground(Theme.BG_2);
-        movieFilterCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(movieFilterCombo);
         movieFilterCombo.setPreferredSize(new Dimension(200, 28));
         filterBar.add(movieFilterCombo);
 
         filterBar.add(createFormLabel("Screening:"));
         screeningFilterCombo = new JComboBox<>();
-        screeningFilterCombo.setBackground(Theme.BG_2);
-        screeningFilterCombo.setForeground(Theme.CREAM);
+        Theme.styleCombo(screeningFilterCombo);
         screeningFilterCombo.setPreferredSize(new Dimension(370, 28));
         filterBar.add(screeningFilterCombo);
 
@@ -168,7 +166,7 @@ public class RevenueReportPanel extends JPanel {
         revenueTable.setSelectionForeground(Color.WHITE);
         revenueTable.setFont(Theme.FONT_NORMAL);
         revenueTable.getTableHeader().setBackground(Theme.TOP_BAR);
-        revenueTable.getTableHeader().setForeground(Theme.CREAM);
+        revenueTable.getTableHeader().setForeground(Color.BLACK);
         revenueTable.getTableHeader().setFont(Theme.FONT_BOLD);
         revenueTable.setRowHeight(24);
 

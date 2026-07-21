@@ -4,5 +4,5 @@ MOV003|Doraemon: Nobita và Lâu Đài Dưới Đáy Biển|Hoạt hình/Phiêu 
 MOV004|Backrooms: Thực Thể Quỷ Quyệt|Kinh dị/Hồi hộp|110|T16|8.4|Backroom.jpg
 MOV005|Tên Cậu Là Gì.|Hoạt hình|107|T13|7.9|tencaulagi.jpg
 MOV006|Minions & Quái vật|Hoạt hình|90|P|7.2|minion.jpg
-MOV007|sss|kin dị|120|T13|8.4|
-MOV008|hai|Tâm Lý|140|T16|9.0|
+MOV007|2222|ms|222|T13|22.0|
+MOV008|2|2|2|P|2.0|
